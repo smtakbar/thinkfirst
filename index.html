@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Think First: Data Structures practice</title>
+<meta name="description" content="Data Structures practice where you commit an answer before any hint or solution opens.">
+<style>
+:root{
+  --bg:#f6f4ef; --card:#ffffff; --ink:#1d2327; --muted:#5b666d; --line:#dcd8cf;
+  --accent:#0b5d5b; --accent-ink:#ffffff; --soft:#e4efee;
+  --good:#1f7a3d; --good-bg:#e5f3e9; --bad:#a23a22; --bad-bg:#f8e9e4; --warn-bg:#fbf1d5; --warn:#6b5200;
+  --code:#f0ede6;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#14181a; --card:#1d2326; --ink:#e9ecec; --muted:#a3adb2; --line:#333c41;
+    --accent:#5cc4bf; --accent-ink:#082625; --soft:#213333;
+    --good:#7fd69a; --good-bg:#1c3324; --bad:#f0a08c; --bad-bg:#3a221c; --warn-bg:#3a3217; --warn:#ecd58a;
+    --code:#252d31;
+  }
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.wrap{max-width:760px;margin:0 auto;padding:20px 16px 56px}
+header.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
+.brand{font-weight:700;font-size:1.15rem;letter-spacing:.01em;background:none;border:0;color:var(--ink);padding:6px 0;cursor:pointer}
+.brand span{color:var(--accent)}
+nav button{background:none;border:0;color:var(--muted);font:inherit;padding:8px 8px;cursor:pointer;border-radius:8px}
+nav button:hover,nav button[aria-current="page"]{color:var(--accent)}
+h1{font-size:1.7rem;line-height:1.2;margin:.2em 0 .35em;text-wrap:balance}
+h2{font-size:1.15rem;margin:1.6em 0 .5em}
+p{margin:.5em 0}
+.lead{color:var(--muted);max-width:60ch}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-top:10px}
+.topic{text-align:left;font:inherit;color:inherit;cursor:pointer;display:flex;flex-direction:column;gap:6px;min-height:128px}
+.topic:hover,.topic:focus-visible{border-color:var(--accent)}
+.topic b{font-size:1.02rem}
+.topic small{color:var(--muted)}
+.topic .meta{margin-top:auto;font-size:.85rem;color:var(--accent);font-weight:600}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;padding:0;margin:10px 0 0;list-style:none;counter-reset:s}
+.steps li{counter-increment:s;background:var(--soft);border-radius:12px;padding:12px 14px;font-size:.95rem}
+.steps li::before{content:counter(s);display:inline-grid;place-items:center;width:1.6em;height:1.6em;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-weight:700;font-size:.85rem;margin-right:.5em}
+.bar{height:6px;background:var(--line);border-radius:99px;overflow:hidden;margin:6px 0 16px}
+.bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .25s}
+.qmeta{display:flex;justify-content:space-between;color:var(--muted);font-size:.88rem}
+.qtext{font-size:1.08rem;margin:.2em 0 .6em}
+pre{background:var(--code);border-radius:10px;padding:12px 14px;overflow-x:auto;font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;margin:.4em 0 1em}
+fieldset{border:0;padding:0;margin:0}
+legend{font-weight:600;margin-bottom:6px;padding:0}
+.opt{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:10px;padding:11px 12px;margin:8px 0;cursor:pointer;background:var(--card)}
+.opt:has(input:checked){border-color:var(--accent);background:var(--soft)}
+.opt.tried{opacity:.55;text-decoration:line-through;cursor:not-allowed;background:var(--bad-bg)}
+.opt.right{border-color:var(--good);background:var(--good-bg);text-decoration:none;opacity:1}
+.opt input{margin-top:.3em;accent-color:var(--accent)}
+.opt span{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.95rem;overflow-wrap:anywhere}
+.opt.prose span{font-family:inherit;font-size:1rem}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 4px}
+.chips label{border:1px solid var(--line);border-radius:99px;padding:6px 14px;cursor:pointer;font-size:.93rem;background:var(--card)}
+.chips label:has(input:checked){background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.chips input{position:absolute;opacity:0;pointer-events:none}
+.chips label:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+.row{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px;align-items:center}
+button.btn{font:inherit;font-weight:600;border-radius:10px;padding:10px 18px;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);cursor:pointer}
+button.btn.ghost{background:transparent;color:var(--accent)}
+button.btn:disabled{opacity:.45;cursor:not-allowed}
+.note{border-radius:10px;padding:11px 13px;margin:12px 0 0;font-size:.97rem}
+.note.good{background:var(--good-bg);color:var(--good)}
+.note.bad{background:var(--bad-bg);color:var(--bad)}
+.note.hint{background:var(--warn-bg);color:var(--warn)}
+.note.why{background:var(--soft);color:var(--ink)}
+.note b{display:block;margin-bottom:2px}
+.lock{color:var(--muted);font-size:.9rem;margin-top:10px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:12px 0}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.stat b{display:block;font-size:1.6rem;line-height:1.1;font-variant-numeric:tabular-nums}
+.stat small{color:var(--muted)}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.93rem;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:600;white-space:nowrap}
+td.n,th.n{text-align:right}
+textarea{width:100%;min-height:120px;font:13px/1.4 ui-monospace,Menlo,Consolas,monospace;border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--card);color:var(--ink)}
+.codebox{word-break:break-all;font:12px/1.4 ui-monospace,Menlo,Consolas,monospace;background:var(--code);padding:10px;border-radius:10px;max-height:110px;overflow:auto}
+.muted{color:var(--muted)}
+footer{margin-top:36px;color:var(--muted);font-size:.85rem}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <button class="brand" id="homeBtn" aria-label="Think First home">Think <span>First</span></button>
+    <nav aria-label="Main">
+      <button data-nav="home">Practice</button>
+      <button data-nav="report">My report</button>
+      <button data-nav="teacher">Teacher</button>
+    </nav>
+  </header>
+  <main id="app" tabindex="-1"></main>
+  <footer>
+    No name, email or roll number is collected. Each answer is sent anonymously to your teacher's class sheet so the class can see which topics need more time.
+  </footer>
+</div>
+
+<script src="questions.js"></script>
+<script>
+"use strict";
+/* ------------------------------------------------------------------
+   Class collection. When formAction and formEntry are set, every question a
+   student meets for the first time (and every second-chance result) is sent
+   as one anonymous row to a Google Form, which feeds a private Google Sheet
+   that only the teacher can open. Leave them empty to keep everything local.
+------------------------------------------------------------------- */
+const CONFIG = {
+  formAction: "https://docs.google.com/forms/d/e/1FAIpQLSek5Z4IsITclyE_Xg0tEpt_apB8cjtG_Y7ra5uFCOBOcdWgww/formResponse",
+  formEntry: "entry.294631717",
+  sheetUrl: "https://docs.google.com/spreadsheets/d/1xaUirATIIYcNPqRssWLqPnehokzszKsy9f-EeLKLDb0/edit"
+};
+const QUICK_GUESS_SECONDS = 4;
+const KEY = "thinkfirst.v1";
+const TOPICS = window.TF_TOPICS, QUESTIONS = window.TF_QUESTIONS;
+const QBY = Object.fromEntries(QUESTIONS.map(q => [q.id, q]));
+const $ = (s, el = document) => el.querySelector(s);
+const app = $("#app");
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const pct = (a, b) => b ? Math.round(100 * a / b) + "%" : "n/a";
+function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+/* ---------- storage (works without it, just forgets on reload) ---------- */
+let mem = null;
+function load() {
+  if (mem) return mem;
+  try { mem = JSON.parse(localStorage.getItem(KEY)) || null; } catch (e) { mem = null; }
+  if (!mem || !mem.r) mem = { id: "s" + Math.random().toString(36).slice(2, 8), r: {} };
+  return mem;
+}
+function save() { try { localStorage.setItem(KEY, JSON.stringify(mem)); } catch (e) { /* private mode: keep in memory */ } }
+
+/* A record is the FIRST time a student met a question:
+   a = attempts, h = hints opened, v = solution shown (1/0), f = first try correct (1/0),
+   g = quick guess (1/0), c = confidence on first try (2 sure, 1 unsure, 0 guess),
+   x = second chance result (1 right, 0 wrong, -1 not taken)                         */
+function summarise(records) {
+  const rows = Object.values(records), n = rows.length;
+  const own = rows.filter(r => r.f).length;
+  const shown = rows.filter(r => r.v).length;
+  const retried = rows.filter(r => r.x >= 0);
+  return {
+    n, own, shown, worked: n - own - shown,
+    hints: rows.reduce((s, r) => s + r.h, 0),
+    quick: rows.filter(r => r.g).length,
+    over: rows.filter(r => r.c === 2 && !r.f).length,
+    sure: rows.filter(r => r.c === 2).length,
+    retried: retried.length, recovered: retried.filter(r => r.x === 1).length
+  };
+}
+function makeCode() {
+  const d = load();
+  const r = Object.entries(d.r).map(([id, x]) => [id, x.a, x.h, x.v, x.f, x.g, x.c, x.x]);
+  return "TF1." + btoa(JSON.stringify({ id: d.id, r }));
+}
+function readCodes(text) {
+  const out = {};
+  for (const m of text.match(/TF1\.[A-Za-z0-9+/=]+/g) || []) {
+    try {
+      const o = JSON.parse(atob(m.slice(4)));
+      if (!o.id || !Array.isArray(o.r)) continue;
+      const rec = {};
+      for (const [id, a, h, v, f, g, c, x] of o.r) if (QBY[id]) rec[id] = { a, h, v, f, g, c, x };
+      out[o.id] = rec;            // a later code from the same student replaces the earlier one
+    } catch (e) { /* skip unreadable code */ }
+  }
+  return out;
+}
+function postRow(fields) {
+  if (!CONFIG.formAction || !CONFIG.formEntry) return;
+  try { const fd = new FormData(); fd.append(CONFIG.formEntry, fields.join("|")); fetch(CONFIG.formAction, { method: "POST", mode: "no-cors", body: fd }).catch(() => {}); } catch (e) { }
+}
+const short = t => t.replace(/[|\n]/g, " ").slice(0, 90);
+
+/* ---------- navigation ---------- */
+function go(view, arg) {
+  document.querySelectorAll("nav button").forEach(b => b.dataset.nav === view ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
+  ({ home, report, teacher, session: startSession })[view](arg);
+  app.focus({ preventScroll: true }); window.scrollTo(0, 0);
+}
+document.querySelectorAll("nav button").forEach(b => b.addEventListener("click", () => go(b.dataset.nav)));
+$("#homeBtn").addEventListener("click", () => go("home"));
+
+/* ---------- home ---------- */
+function home() {
+  const d = load();
+  const cards = TOPICS.map(t => {
+    const qs = QUESTIONS.filter(q => q.topic === t.id), done = qs.filter(q => d.r[q.id]);
+    const own = done.filter(q => d.r[q.id].f).length;
+    const meta = done.length ? `${done.length} of ${qs.length} done, ${own} on first try` : `${qs.length} questions`;
+    return `<button class="card topic" data-topic="${t.id}"><b>${esc(t.name)}</b><small>${esc(t.blurb)}</small><span class="meta">${meta}</span></button>`;
+  }).join("");
+  app.innerHTML = `
+    <h1>Answer first. Help comes after.</h1>
+    <p class="lead">Data Structures practice for B.E. third semester. Nothing opens until you commit an answer, and each wrong try unlocks one more hint. The solution is the last thing you see, not the first.</p>
+    <ol class="steps" aria-label="How it works">
+      <li>Pick an answer and say how sure you are.</li>
+      <li>Wrong? Try again. Each try unlocks one hint.</li>
+      <li>Missed questions come back once at the end.</li>
+    </ol>
+    <h2>Pick a topic</h2>
+    <div class="grid">${cards}</div>`;
+  app.querySelectorAll("[data-topic]").forEach(b => b.addEventListener("click", () => go("session", b.dataset.topic)));
+}
+
+/* ---------- session ---------- */
+let S = null;
+function startSession(topicId) {
+  const qs = shuffle(QUESTIONS.filter(q => q.topic === topicId));
+  S = { topic: TOPICS.find(t => t.id === topicId), queue: qs, i: 0, phase: "main", results: [], retry: [] };
+  showQuestion();
+}
+function showQuestion() {
+  const q = S.queue[S.i], second = S.phase === "second";
+  const order = shuffle(q.options.map((_, i) => i));
+  const st = { tried: new Set(), attempts: 0, hints: 0, shown: false, done: false, t0: Date.now(), conf: null, quick: 0, first: null };
+  const prose = q.options.some(o => o.length > 28);
+  app.innerHTML = `
+    <div class="qmeta"><span>${esc(S.topic.name)}${second ? " · second chance" : ""}</span><span>Question ${S.i + 1} of ${S.queue.length}</span></div>
+    <div class="bar"><i style="width:${100 * S.i / S.queue.length}%"></i></div>
+    <div class="card">
+      <p class="qtext">${esc(q.q)}</p>
+      ${q.code ? `<pre>${esc(q.code)}</pre>` : ""}
+      <form id="f" novalidate>
+        <fieldset id="opts"><legend>Your answer</legend>
+          ${order.map(i => `<label class="opt${prose ? " prose" : ""}" data-i="${i}"><input type="radio" name="o" value="${i}"><span>${esc(q.options[i])}</span></label>`).join("")}
+        </fieldset>
+        ${second ? "" : `<fieldset id="conf" style="margin-top:12px"><legend>How sure are you?</legend>
+          <div class="chips">
+            <label><input type="radio" name="c" value="2">Sure</label>
+            <label><input type="radio" name="c" value="1">Not sure</label>
+            <label><input type="radio" name="c" value="0">Guessing</label>
+          </div></fieldset>`}
+        <div class="row">
+          <button class="btn" id="commit" disabled>Commit answer</button>
+          <button class="btn ghost" type="button" id="hintBtn" hidden></button>
+          <button class="btn ghost" type="button" id="giveBtn" hidden>Show the solution</button>
+        </div>
+        <p class="lock" id="lock">${second ? "One try this time. No hints." : "Hints and the solution stay locked until you commit an answer."}</p>
+      </form>
+      <div id="fb" aria-live="polite"></div>
+    </div>`;
+  const f = $("#f"), commit = $("#commit"), fb = $("#fb"), hintBtn = $("#hintBtn"), giveBtn = $("#giveBtn"), lock = $("#lock");
+  const ready = () => { commit.disabled = st.done || !f.o.value || (!second && st.attempts === 0 && !f.c.value); };
+  f.addEventListener("change", ready);
+  const note = (cls, title, text) => { fb.insertAdjacentHTML("beforeend", `<div class="note ${cls}"><b>${esc(title)}</b>${esc(text)}</div>`); };
+  const finish = () => {
+    st.done = true; commit.hidden = true; hintBtn.hidden = true; giveBtn.hidden = true; lock.hidden = true;
+    f.querySelectorAll("input").forEach(x => x.disabled = true);
+    $(`.opt[data-i="${q.answer}"]`).classList.add("right");
+    if (second) { const rec = load().r[q.id]; if (rec && rec.x === -1) { rec.x = st.first ? 1 : 0; save(); postRow([load().id, S.topic.name, q.id, short(q.q), "second", 0, 0, 0, 0, 0, 0, rec.x, 0]); } S.results.push({ id: q.id, second: true, ok: st.first }); }
+    else {
+      const d = load();
+      if (!d.r[q.id]) { const r = d.r[q.id] = { a: st.attempts, h: st.hints, v: st.shown ? 1 : 0, f: st.first ? 1 : 0, g: st.quick, c: st.conf, x: -1 }; save(); postRow([d.id, S.topic.name, q.id, short(q.q), "first", r.a, r.h, r.v, r.f, r.g, r.c, r.f, (r.c === 2 && !r.f) ? 1 : 0]); }
+      S.results.push({ id: q.id, first: st.first, shown: st.shown });
+      if (!st.first) S.retry.push(q);
+    }
+    const last = S.i === S.queue.length - 1;
+    fb.insertAdjacentHTML("beforeend", `<div class="row"><button class="btn" id="next">${last ? (S.phase === "main" && S.retry.length ? "Go to second chance" : "See my result") : "Next question"}</button></div>`);
+    $("#next").addEventListener("click", next); $("#next").focus();
+  };
+  const reveal = () => { st.shown = true; note("why", "Solution", q.why); finish(); };
+  hintBtn.addEventListener("click", () => { st.hints++; note("hint", "Hint " + st.hints, st.hints === 1 ? q.h1 : q.h2); updateUnlocks(); });
+  giveBtn.addEventListener("click", reveal);
+  function updateUnlocks() {
+    if (second || st.done) return;
+    const available = Math.min(st.attempts, 2);
+    hintBtn.hidden = st.hints >= available; hintBtn.textContent = "Show hint " + (st.hints + 1);
+    giveBtn.hidden = st.attempts < 2;
+    lock.textContent = st.attempts === 0 ? "Hints and the solution stay locked until you commit an answer."
+      : st.attempts === 1 ? "Hint 1 is unlocked. Try again to unlock hint 2."
+      : "Both hints are unlocked. Try once more, or open the solution.";
+  }
+  f.addEventListener("submit", e => {
+    e.preventDefault(); if (commit.disabled) return;
+    const pick = Number(f.o.value), ok = pick === q.answer;
+    st.attempts++;
+    if (st.attempts === 1) { st.first = ok; if (!second) { st.conf = Number(f.c.value); st.quick = (Date.now() - st.t0) / 1000 < QUICK_GUESS_SECONDS ? 1 : 0; $("#conf").hidden = true; } }
+    if (ok) {
+      note("good", st.attempts === 1 ? "Correct on the first try." : "Correct.", ""); note("why", "Why", q.why); finish(); return;
+    }
+    st.tried.add(pick);
+    const lab = $(`.opt[data-i="${pick}"]`); lab.classList.add("tried"); lab.querySelector("input").disabled = true; lab.querySelector("input").checked = false;
+    if (second) { note("bad", "Not this time.", ""); note("why", "Solution", q.why); finish(); return; }
+    if (st.attempts >= 3) { note("bad", "Not yet.", "That was your third try, so here is the full solution."); reveal(); return; }
+    note("bad", "Not yet.", st.attempts === 1 ? "That option is ruled out. You can open hint 1 or try again." : "Two options are ruled out. Hint 2 is now unlocked.");
+    updateUnlocks(); ready();
+  });
+}
+function next() {
+  if (S.i < S.queue.length - 1) { S.i++; return showQuestion(); }
+  if (S.phase === "main" && S.retry.length) { S.phase = "second"; S.queue = shuffle(S.retry); S.i = 0; return showQuestion(); }
+  sessionEnd();
+}
+function sessionEnd() {
+  const main = S.results.filter(r => !r.second), sec = S.results.filter(r => r.second);
+  const own = main.filter(r => r.first).length, shown = main.filter(r => r.shown).length;
+  const worked = main.length - own - shown, rec = sec.filter(r => r.ok).length;
+  const line = shown === 0 ? "You never needed the solution in this topic."
+    : `You needed the solution for ${shown} of ${main.length} questions.`;
+  app.innerHTML = `
+    <h1>${esc(S.topic.name)}: done</h1>
+    <p class="lead">${line}${sec.length ? ` On the second chance you got ${rec} of ${sec.length} right.` : ""}</p>
+    <div class="stats">
+      <div class="stat"><b>${own}/${main.length}</b><small>right on the first try</small></div>
+      <div class="stat"><b>${worked}</b><small>solved after a hint or retry</small></div>
+      <div class="stat"><b>${shown}</b><small>needed the solution</small></div>
+      ${sec.length ? `<div class="stat"><b>${rec}/${sec.length}</b><small>recovered on second chance</small></div>` : ""}
+    </div>
+    <div class="row"><button class="btn" id="more">Another topic</button><button class="btn ghost" id="rep">My report</button></div>`;
+  $("#more").addEventListener("click", () => go("home")); $("#rep").addEventListener("click", () => go("report"));
+}
+
+/* ---------- shared stats block ---------- */
+function statsBlock(s) {
+  return `<div class="stats">
+    <div class="stat"><b>${pct(s.n - s.shown, s.n)}</b><small>think-first score: solved without the solution</small></div>
+    <div class="stat"><b>${pct(s.own, s.n)}</b><small>right on the first try</small></div>
+    <div class="stat"><b>${s.n ? (s.hints / s.n).toFixed(1) : "n/a"}</b><small>hints opened per question</small></div>
+    <div class="stat"><b>${pct(s.recovered, s.retried)}</b><small>missed questions recovered on second chance</small></div>
+    <div class="stat"><b>${pct(s.over, s.sure)}</b><small>"sure" answers that were wrong</small></div>
+    <div class="stat"><b>${pct(s.quick, s.n)}</b><small>answered in under ${QUICK_GUESS_SECONDS} seconds</small></div>
+  </div>`;
+}
+
+/* ---------- my report ---------- */
+function report() {
+  const d = load(), s = summarise(d.r);
+  if (!s.n) { app.innerHTML = `<h1>My report</h1><p class="lead">Nothing yet. Finish a topic and your numbers appear here.</p><div class="row"><button class="btn" id="b">Start practising</button></div>`; $("#b").addEventListener("click", () => go("home")); return; }
+  const rows = TOPICS.map(t => {
+    const rec = {}; QUESTIONS.filter(q => q.topic === t.id && d.r[q.id]).forEach(q => rec[q.id] = d.r[q.id]);
+    const x = summarise(rec); if (!x.n) return "";
+    return `<tr><td>${esc(t.name)}</td><td class="n">${x.n}</td><td class="n">${x.own}</td><td class="n">${x.worked}</td><td class="n">${x.shown}</td></tr>`;
+  }).join("");
+  app.innerHTML = `
+    <h1>My report</h1>
+    <p class="lead">Counted from the first time you met each question (${s.n} of ${QUESTIONS.length} so far).</p>
+    ${statsBlock(s)}
+    <div class="card tablewrap"><table>
+      <thead><tr><th>Topic</th><th class="n">Done</th><th class="n">First try</th><th class="n">After hints</th><th class="n">Needed solution</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>
+    <h2>Share with your teacher</h2>
+    <p class="muted">This code holds your results only. It has no name in it. Copy it and send it to your teacher.</p>
+    <div class="codebox" id="code">${esc(makeCode())}</div>
+    <div class="row"><button class="btn" id="copy">Copy my results code</button><button class="btn ghost" id="reset">Clear my results</button><span id="msg" class="muted" aria-live="polite"></span></div>`;
+  $("#copy").addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText(makeCode()); $("#msg").textContent = "Copied."; }
+    catch (e) { const r = document.createRange(); r.selectNodeContents($("#code")); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); $("#msg").textContent = "Code selected. Copy it manually."; }
+  });
+  let armed = false;
+  $("#reset").addEventListener("click", e => {
+    if (!armed) { armed = true; e.target.textContent = "Tap again to clear everything"; return; }
+    mem = { id: load().id, r: {} }; save(); report();
+  });
+}
+
+/* ---------- teacher ---------- */
+let classData = {};
+function teacher() {
+  app.innerHTML = `
+    <h1>Teacher view</h1>
+    ${CONFIG.sheetUrl ? `<p class="lead">Class results arrive automatically in a private sheet. <a href="${CONFIG.sheetUrl}" target="_blank" rel="noopener">Open the class sheet</a> (only people the owner has shared it with can open it).</p><h2>Check individual codes</h2>` : ""}
+    <p class="lead">Ask students to send their results code from "My report". Paste all the codes below, in any order and with any text around them. Nothing is uploaded: the numbers are worked out in this browser.</p>
+    <textarea id="codes" aria-label="Paste student results codes" placeholder="Paste results codes here (they start with TF1.)"></textarea>
+    <div class="row"><button class="btn" id="add">Add codes</button><button class="btn ghost" id="mine">Add this device's results</button><button class="btn ghost" id="clear">Clear class</button></div>
+    <div id="out"></div>`;
+  $("#add").addEventListener("click", () => { Object.assign(classData, readCodes($("#codes").value)); $("#codes").value = ""; renderClass(); });
+  $("#mine").addEventListener("click", () => { Object.assign(classData, readCodes(makeCode())); renderClass(); });
+  $("#clear").addEventListener("click", () => { classData = {}; renderClass(); });
+  renderClass();
+}
+function renderClass() {
+  const out = $("#out"), students = Object.values(classData).filter(r => Object.keys(r).length);
+  if (!students.length) { out.innerHTML = `<p class="muted" style="margin-top:14px">No student results added yet.</p>`; return; }
+  const all = {}; let k = 0;
+  students.forEach(r => Object.entries(r).forEach(([id, x]) => all[id + "#" + (k++)] = x));
+  const s = summarise(all);
+  const perQ = QUESTIONS.map(q => {
+    const rs = students.map(r => r[q.id]).filter(Boolean); if (!rs.length) return null;
+    return { q, n: rs.length, own: rs.filter(r => r.f).length, shown: rs.filter(r => r.v).length, over: rs.filter(r => r.c === 2 && !r.f).length };
+  }).filter(Boolean).sort((a, b) => b.shown / b.n - a.shown / a.n || a.own / a.n - b.own / b.n);
+  const tname = id => TOPICS.find(t => t.id === id).name;
+  out.innerHTML = `
+    <h2>Class summary: ${students.length} student${students.length > 1 ? "s" : ""}, ${s.n} first attempts</h2>
+    ${statsBlock(s)}
+    <h2>Questions, hardest first</h2>
+    <div class="card tablewrap"><table>
+      <thead><tr><th>Question</th><th>Topic</th><th class="n">Students</th><th class="n">First try</th><th class="n">Needed solution</th><th class="n">Sure but wrong</th></tr></thead>
+      <tbody>${perQ.map(r => `<tr><td>${esc(r.q.q.length > 90 ? r.q.q.slice(0, 88) + "..." : r.q.q)}</td><td>${esc(tname(r.q.topic))}</td><td class="n">${r.n}</td><td class="n">${pct(r.own, r.n)}</td><td class="n">${pct(r.shown, r.n)}</td><td class="n">${r.over}</td></tr>`).join("")}</tbody>
+    </table></div>
+    <p class="muted">"Sure but wrong" points to a shared misconception, which is usually worth five minutes in class.</p>`;
+}
+
+go("home");
+</script>
+</body>
+</html>
