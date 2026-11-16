@@ -11,6 +11,8 @@ const path = require('path');
   await p.goto(url);
   ok('home shows 6 topics', await p.locator('[data-topic]').count() === 6);
   ok('no horizontal scroll on phone', await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+  ok('Teacher nav button hidden from students', await p.locator('nav [data-nav="teacher"]').isHidden());
+  ok('teacher sign in link offered in footer', await p.locator('#tLogin').isVisible());
   await p.screenshot({ path: 'shot-home-phone.png' });
   await p.click('[data-topic="stackq"]');
   const Q = await p.evaluate(() => window.TF_QUESTIONS);
@@ -71,7 +73,19 @@ const path = require('path');
   ok('results code generated', code.startsWith('TF1.'));
   // teacher view on desktop with 2 students (same data, different ids)
   const d = await ctx.newPage(); await d.setViewportSize({ width: 1200, height: 900 });
-  await d.goto(url); await d.click('nav [data-nav="teacher"]');
+  await d.goto(url);
+  // teacher sign in: wrong details are refused. The real password is not kept in this public repo,
+  // so the test then marks the tab as signed in the same way a correct sign in does.
+  await d.click('#tLogin');
+  ok('sign in form shown, not the Teacher view', await d.locator('#lf').count() === 1 && await d.locator('#codes').count() === 0);
+  await d.fill('#lid', 'mjcet'); await d.fill('#lpw', 'wrong-password'); await d.click('#lgo');
+  await d.waitForFunction(() => /not right/.test(document.querySelector('#lmsg').textContent));
+  ok('wrong password refused', await d.locator('#codes').count() === 0 && await d.locator('nav [data-nav="teacher"]').isHidden());
+  await d.evaluate(() => go('teacher'));
+  ok('Teacher view cannot be opened without signing in', await d.locator('#codes').count() === 0 && await d.locator('#lf').count() === 1);
+  await d.evaluate(() => sessionStorage.setItem('thinkfirst.teacher', '1')); await d.reload();
+  ok('Teacher nav button visible after sign in', await d.locator('nav [data-nav="teacher"]').isVisible() && await d.locator('#tWrap').isHidden());
+  await d.click('nav [data-nav="teacher"]');
   const code2 = await p.evaluate(() => { const o = JSON.parse(atob(makeCode().slice(4))); o.id = 'other'; return 'TF1.' + btoa(JSON.stringify(o)); });
   await d.fill('#codes', 'from whatsapp: ' + code + '\nand ' + code2 + ' thanks ' + code + ' TF1.garbage!!');
   await d.click('#add');
@@ -80,6 +94,18 @@ const path = require('path');
   ok('teacher table has 5 question rows', await d.locator('#out tbody tr').count() === 5);
   await d.screenshot({ path: 'shot-teacher-desktop.png', fullPage: true });
   await d.click('nav [data-nav="home"]'); await d.screenshot({ path: 'shot-home-desktop.png', fullPage: true });
+  await d.click('nav [data-nav="teacher"]'); await d.click('#out2');
+  ok('sign out hides the Teacher view again', await d.locator('nav [data-nav="teacher"]').isHidden() && await d.locator('#tLogin').isVisible());
+  // diagrams
+  const figs = await d.evaluate(() => { const all = []; for (const q of TF_QUESTIONS) for (const f of [].concat(q.fig || [], q.whyFig || [])) all.push({ id: q.id, alt: !!f.alt, svg: figSvg(f) }); return all; });
+  ok('every diagram draws and has alt text: ' + figs.length, figs.length >= 12 && figs.every(f => f.alt && f.svg.startsWith('<svg') && !/NaN|undefined/.test(f.svg)));
+  await d.click('[data-topic="graphs"]');
+  let gq = await d.evaluate(() => TF_QUESTIONS.find(q => q.q === document.querySelector('.qtext').innerText));
+  while (!gq.fig) { await d.locator(`.opt[data-i="${gq.answer}"] input`).check(); await d.locator('#conf label').first().click(); await d.click('#commit'); await d.click('#next'); gq = await d.evaluate(() => TF_QUESTIONS.find(q => q.q === document.querySelector('.qtext').innerText)); }
+  ok('graph question shows its diagram before any answer', await d.locator('.card > .fig svg').count() === 1);
+  ok('diagram fits a phone-width card', await d.evaluate(() => { const s = document.querySelector('.fig svg'); return s.viewBox.baseVal.width <= 400; }));
+  await d.screenshot({ path: 'shot-graph-desktop.png', fullPage: true });
+  posts = posts.filter(x => !x.includes('|Graphs|'));
   ok('8 anonymous rows sent to the class form (5 first, 3 second): ' + posts.length, posts.length === 8 && posts.filter(x => x.includes('|first|')).length === 5 && posts.filter(x => x.includes('|second|')).length === 3);
   ok('no page errors: ' + errs.join('; '), errs.length === 0);
   // data integrity of the bank

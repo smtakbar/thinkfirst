@@ -35,6 +35,8 @@ This is a hypothesis taken from the literature on cognitive offloading and from 
 | Teacher analysis | An Analysis tab in the sheet: topics ranked by difficulty, and a dropdown that lists one topic's questions hardest first | A custom dashboard page | The sheet stays private to the people it is shared with, and the teacher can sort, filter and chart it without new software. |
 | Hints | Written by hand, two per question | AI-generated hints | An AI key cannot sit safely in a public page, and a wrong hint is worse than none. |
 | Unlock rule | One hint per wrong attempt | Timer-based unlock | An attempt is evidence of thinking. Waiting is not. |
+| Teacher access | One shared login ID and password, checked in the browser against a salted hash. The Teacher view and its menu button stay hidden until sign in. | Per-teacher accounts on a server | The page has no server and the pilot has one instructor. Cost: this hides the view from students but is not strong security. The class data stays protected by Google Sheet sharing. |
+| Diagrams | Trees, graphs and linked lists are drawn from data. A question shows a diagram only when it does not do the work for the student. Other diagrams appear with the solution. | A diagram on every question | Drawing the tree is often the skill being tested, so showing it early would give the answer away. |
 | Question format | Multiple choice with traces | Typed code answers | Checkable in the browser and usable on a phone. Cost: guessing is possible, so quick guesses are flagged. |
 
 ## 6. Known limits

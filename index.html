@@ -104,6 +104,26 @@ textarea{width:100%;min-height:130px;font:13px/1.45 var(--mono);border:0;border-
 textarea::placeholder{color:var(--muted)}
 .codebox{word-break:break-all;font:12px/1.45 var(--mono);box-shadow:var(--in);padding:14px 16px;border-radius:16px;max-height:110px;overflow:auto}
 .muted{color:var(--muted)}
+.kicker{color:var(--accent);font-weight:600;font-size:.8rem;letter-spacing:.05em;text-transform:uppercase;margin:0 0 .7em}
+.fig{box-shadow:var(--in);border-radius:16px;padding:12px;margin:.4em 0 1.2em;overflow-x:auto;text-align:center}
+.fig svg{max-width:100%;height:auto;display:inline-block}
+.fig figcaption{font-size:.8rem;color:var(--muted);margin-top:2px}
+.figs{display:flex;flex-wrap:wrap;gap:14px}
+.figs .fig{flex:1 1 170px;margin:14px 0 0}
+.fig .e{stroke:var(--muted);stroke-width:1.6;fill:none}
+.fig .e.hi{stroke:var(--accent);stroke-width:3}
+.fig .e.dim{opacity:.4;stroke-dasharray:4 4}
+.fig .ah{fill:var(--muted)}
+.fig .n{fill:var(--bg);stroke:var(--muted);stroke-width:1.6}
+.fig .n.hi{stroke:var(--accent);stroke-width:3}
+.fig .wb{fill:var(--bg)}
+.fig text{fill:var(--ink);font:600 13px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;text-anchor:middle;dominant-baseline:central}
+.fig text.w{fill:var(--muted);font-size:12px}
+.field{display:block;margin:14px 0}
+.field span{display:block;font-weight:600;font-size:.82rem;color:var(--muted);margin-bottom:6px}
+.field input{width:100%;font:inherit;border:0;border-radius:14px;padding:12px 16px;background:var(--bg);color:var(--ink);box-shadow:var(--in)}
+.login{max-width:400px}
+button.link{font:inherit;background:none;border:0;padding:0;color:var(--accent);cursor:pointer;text-decoration:underline}
 footer{margin-top:56px;color:var(--muted);font-size:.8rem;line-height:1.5;max-width:60ch}
 :focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 @media (max-width:420px){nav button{padding:7px 9px;font-size:.83rem}.wrap{padding:18px 16px 56px}.card{padding:20px 18px}.tablewrap{padding:8px 12px}}
@@ -117,12 +137,13 @@ footer{margin-top:56px;color:var(--muted);font-size:.8rem;line-height:1.5;max-wi
     <nav aria-label="Main">
       <button data-nav="home">Practice</button>
       <button data-nav="report">My report</button>
-      <button data-nav="teacher">Teacher</button>
+      <button data-nav="teacher" hidden>Teacher</button>
     </nav>
   </header>
   <main id="app" tabindex="-1"></main>
   <footer>
     No name, email or roll number is collected. Each answer is sent anonymously to your teacher's class sheet so the class can see which topics need more time.
+    <span id="tWrap"><br>Teaching this class? <button class="link" id="tLogin">Teacher sign in</button></span>
   </footer>
 </div>
 
@@ -140,6 +161,12 @@ const CONFIG = {
   formEntry: "entry.294631717",
   sheetUrl: "https://docs.google.com/spreadsheets/d/1xaUirATIIYcNPqRssWLqPnehokzszKsy9f-EeLKLDb0/edit"
 };
+/* Teacher sign-in. This page has no server, so the check runs in the browser:
+   it hides the Teacher view from students but is not strong security. Only a
+   salted PBKDF2 hash of "id:password" is stored here, never the password.
+   The class data itself is protected by Google Sheet sharing, not by this.  */
+const TEACHER = { salt: "thinkfirst.teacher.v1", rounds: 150000, hash: "58bd952088a965f3ba39428fb6090c912b9c2dcdfb3964c92586130d7d3bb417" };
+const TKEY = "thinkfirst.teacher";
 const QUICK_GUESS_SECONDS = 4;
 const KEY = "thinkfirst.v1";
 const TOPICS = window.TF_TOPICS, QUESTIONS = window.TF_QUESTIONS;
@@ -203,13 +230,98 @@ function postRow(fields) {
 const short = t => t.replace(/[|\n]/g, " ").slice(0, 90);
 
 /* ---------- navigation ---------- */
+function isTeacher() { try { return sessionStorage.getItem(TKEY) === "1"; } catch (e) { return teacherMem; } }
+let teacherMem = false;
+function setTeacher(on) {
+  teacherMem = on;
+  try { on ? sessionStorage.setItem(TKEY, "1") : sessionStorage.removeItem(TKEY); } catch (e) { }
+  syncTeacherUi();
+}
+function syncTeacherUi() {
+  const on = isTeacher() || teacherMem;
+  $('nav [data-nav="teacher"]').hidden = !on; $("#tWrap").hidden = on;
+}
+async function checkLogin(id, pw) {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey("raw", enc.encode(id.trim().toLowerCase() + ":" + pw), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: enc.encode(TEACHER.salt), iterations: TEACHER.rounds }, key, 256);
+  return [...new Uint8Array(bits)].map(b => b.toString(16).padStart(2, "0")).join("") === TEACHER.hash;
+}
+function login() {
+  app.innerHTML = `
+    <h1>Teacher sign in</h1>
+    <p class="lead">For teachers of this class. Students do not need to sign in.</p>
+    <form class="card login" id="lf" novalidate>
+      <label class="field"><span>Login ID</span><input id="lid" autocomplete="username" autocapitalize="none" spellcheck="false" required></label>
+      <label class="field"><span>Password</span><input id="lpw" type="password" autocomplete="current-password" required></label>
+      <div class="row"><button class="btn" id="lgo">Sign in</button><span id="lmsg" class="muted" role="alert"></span></div>
+    </form>`;
+  $("#lf").addEventListener("submit", async e => {
+    e.preventDefault();
+    const msg = $("#lmsg"), id = $("#lid").value, pw = $("#lpw").value;
+    if (!id.trim() || !pw) { msg.textContent = "Enter both the login ID and the password."; return; }
+    $("#lgo").disabled = true; msg.textContent = "Checking...";
+    let ok = false;
+    try { ok = await checkLogin(id, pw); } catch (err) { $("#lgo").disabled = false; msg.textContent = "This browser cannot check the sign in. Try a current version of Chrome, Edge, Safari or Firefox."; return; }
+    if (ok) { setTeacher(true); go("teacher"); }
+    else { $("#lgo").disabled = false; $("#lpw").value = ""; msg.textContent = "That login ID or password is not right."; }
+  });
+  $("#lid").focus();
+}
 function go(view, arg) {
+  if (view === "teacher" && !(isTeacher() || teacherMem)) view = "login";
   document.querySelectorAll("nav button").forEach(b => b.dataset.nav === view ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
-  ({ home, report, teacher, session: startSession })[view](arg);
+  ({ home, report, teacher, login, session: startSession })[view](arg);
   app.focus({ preventScroll: true }); window.scrollTo(0, 0);
 }
 document.querySelectorAll("nav button").forEach(b => b.addEventListener("click", () => go(b.dataset.nav)));
 $("#homeBtn").addEventListener("click", () => go("home"));
+$("#tLogin").addEventListener("click", () => go("login"));
+syncTeacherUi();
+
+/* ---------- diagrams (inline SVG drawn from data in questions.js) ---------- */
+function figSvg(f) {
+  let W = 0, H = 0, s = "";
+  if (f.type === "tree") {
+    const nodes = [], edges = []; let k = 0, maxd = 0;
+    (function walk(t, d, parent) {
+      if (!t) return;
+      const me = { label: t[0], d }; maxd = Math.max(maxd, d);
+      walk(t[1], d + 1, me); me.i = k++; nodes.push(me); walk(t[2], d + 1, me);
+      if (parent) edges.push([parent, me]);
+    })(f.root, 0, null);
+    const step = Math.min(46, 300 / Math.max(1, k - 1)), r = f.small ? 8 : 15, hi = f.hi || [];
+    const X = n => 22 + n.i * step, Y = n => 22 + n.d * 50;
+    W = 44 + (k - 1) * step; H = 44 + maxd * 50;
+    s += edges.map(([a, b]) => `<line class="e" x1="${X(a)}" y1="${Y(a)}" x2="${X(b)}" y2="${Y(b)}"/>`).join("");
+    s += nodes.map(n => `<circle class="n${hi.includes(n.label) ? " hi" : ""}" cx="${X(n)}" cy="${Y(n)}" r="${r}"/>${n.label === "" ? "" : `<text x="${X(n)}" y="${Y(n)}">${esc(n.label)}</text>`}`).join("");
+  } else if (f.type === "graph") {
+    W = f.w; H = f.h; const hi = f.hi;
+    s += f.edges.map(([a, b, w]) => {
+      const [x1, y1] = f.nodes[a], [x2, y2] = f.nodes[b], mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+      const cls = hi ? (hi.includes(a + "-" + b) ? " hi" : " dim") : "";
+      return `<line class="e${cls}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>` + (w === undefined ? "" : `<rect class="wb" x="${mx - 10}" y="${my - 9}" width="20" height="18" rx="6"/><text class="w" x="${mx}" y="${my}">${esc(w)}</text>`);
+    }).join("");
+    s += Object.entries(f.nodes).map(([id, [x, y]]) => `<circle class="n" cx="${x}" cy="${y}" r="15"/><text x="${x}" y="${y}">${esc(id)}</text>`).join("");
+  } else if (f.type === "list") {
+    const n = f.items.length, bx = i => 12 + i * 90, by = 26;
+    W = 12 + n * 90 + (f.circular ? -22 : 36); H = f.circular ? 98 : 72;
+    s += `<text class="w" x="${bx(0) + 28}" y="12">head</text>`;
+    f.items.forEach((v, i) => {
+      s += `<rect class="n" x="${bx(i)}" y="${by}" width="56" height="34" rx="10"/><text x="${bx(i) + 28}" y="${by + 17}">${esc(v)}</text>`;
+      if (i < n - 1 || !f.circular) { const x1 = bx(i) + 56, x2 = bx(i) + 90; s += `<line class="e" x1="${x1}" y1="${by + 17}" x2="${x2 - 7}" y2="${by + 17}"/><path class="ah" d="M${x2 - 1} ${by + 17}l-9 -5v10z"/>`; }
+    });
+    if (f.circular) { const xl = bx(n - 1) + 28, xf = bx(0) + 28, yb = by + 34; s += `<path class="e" d="M${xl} ${yb}v14q0 10 -10 10H${xf + 10}q-10 0 -10 -10v-7"/><path class="ah" d="M${xf} ${yb + 1}l-5 9h10z"/>`; }
+    else s += `<text class="w" x="${bx(n) + 18}" y="${by + 17}">NULL</text>`;
+  }
+  return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true" focusable="false">${s}</svg>`;
+}
+function figHtml(figs) {
+  if (!figs) return "";
+  const list = Array.isArray(figs) ? figs : [figs];
+  const one = f => `<figure class="fig" role="img" aria-label="${esc(f.alt)}">${figSvg(f)}${f.cap ? `<figcaption>${esc(f.cap)}</figcaption>` : ""}</figure>`;
+  return list.length > 1 ? `<div class="figs">${list.map(one).join("")}</div>` : one(list[0]);
+}
 
 /* ---------- home ---------- */
 function home() {
@@ -221,8 +333,9 @@ function home() {
     return `<button class="card topic" data-topic="${t.id}"><b>${esc(t.name)}</b><small>${esc(t.blurb)}</small><span class="meta">${meta}</span></button>`;
   }).join("");
   app.innerHTML = `
+    <p class="kicker">Data Structures · B.E. third semester</p>
     <h1>Answer first. Help comes after.</h1>
-    <p class="lead">Data Structures practice for B.E. third semester. Nothing opens until you commit an answer, and each wrong try unlocks one more hint. The solution is the last thing you see, not the first.</p>
+    <p class="lead">Your brain gets the first move. Pick an answer, back it, lock it in. Every wrong try earns you one hint. The solution waits at the very end, right where it belongs.</p>
     <ol class="steps" aria-label="How it works">
       <li>Pick an answer and say how sure you are.</li>
       <li>Wrong? Try again. Each try unlocks one hint.</li>
@@ -251,6 +364,7 @@ function showQuestion() {
     <div class="card">
       <p class="qtext">${esc(q.q)}</p>
       ${q.code ? `<pre>${esc(q.code)}</pre>` : ""}
+      ${figHtml(q.fig)}
       <form id="f" novalidate>
         <fieldset id="opts"><legend>Your answer</legend>
           ${order.map(i => `<label class="opt${prose ? " prose" : ""}" data-i="${i}"><input type="radio" name="o" value="${i}"><span>${esc(q.options[i])}</span></label>`).join("")}
@@ -273,7 +387,8 @@ function showQuestion() {
   const f = $("#f"), commit = $("#commit"), fb = $("#fb"), hintBtn = $("#hintBtn"), giveBtn = $("#giveBtn"), lock = $("#lock");
   const ready = () => { commit.disabled = st.done || !f.o.value || (!second && st.attempts === 0 && !f.c.value); };
   f.addEventListener("change", ready);
-  const note = (cls, title, text) => { fb.insertAdjacentHTML("beforeend", `<div class="note ${cls}"><b>${esc(title)}</b>${esc(text)}</div>`); };
+  const note = (cls, title, text, extra = "") => { fb.insertAdjacentHTML("beforeend", `<div class="note ${cls}"><b>${esc(title)}</b>${esc(text)}${extra}</div>`); };
+  const showWhy = title => note("why", title, q.why, figHtml(q.whyFig));
   const finish = () => {
     st.done = true; commit.hidden = true; hintBtn.hidden = true; giveBtn.hidden = true; lock.hidden = true;
     f.querySelectorAll("input").forEach(x => x.disabled = true);
@@ -289,7 +404,7 @@ function showQuestion() {
     fb.insertAdjacentHTML("beforeend", `<div class="row"><button class="btn" id="next">${last ? (S.phase === "main" && S.retry.length ? "Go to second chance" : "See my result") : "Next question"}</button></div>`);
     $("#next").addEventListener("click", next); $("#next").focus();
   };
-  const reveal = () => { st.shown = true; note("why", "Solution", q.why); finish(); };
+  const reveal = () => { st.shown = true; showWhy("Solution"); finish(); };
   hintBtn.addEventListener("click", () => { st.hints++; note("hint", "Hint " + st.hints, st.hints === 1 ? q.h1 : q.h2); updateUnlocks(); });
   giveBtn.addEventListener("click", reveal);
   function updateUnlocks() {
@@ -307,11 +422,11 @@ function showQuestion() {
     st.attempts++;
     if (st.attempts === 1) { st.first = ok; if (!second) { st.conf = Number(f.c.value); st.quick = (Date.now() - st.t0) / 1000 < QUICK_GUESS_SECONDS ? 1 : 0; $("#conf").hidden = true; } }
     if (ok) {
-      note("good", st.attempts === 1 ? "Correct on the first try." : "Correct.", ""); note("why", "Why", q.why); finish(); return;
+      note("good", st.attempts === 1 ? "Correct on the first try." : "Correct.", ""); showWhy("Why"); finish(); return;
     }
     st.tried.add(pick);
     const lab = $(`.opt[data-i="${pick}"]`); lab.classList.add("tried"); lab.querySelector("input").disabled = true; lab.querySelector("input").checked = false;
-    if (second) { note("bad", "Not this time.", ""); note("why", "Solution", q.why); finish(); return; }
+    if (second) { note("bad", "Not this time.", ""); showWhy("Solution"); finish(); return; }
     if (st.attempts >= 3) { note("bad", "Not yet.", "That was your third try, so here is the full solution."); reveal(); return; }
     note("bad", "Not yet.", st.attempts === 1 ? "That option is ruled out. You can open hint 1 or try again." : "Two options are ruled out. Hint 2 is now unlocked.");
     updateUnlocks(); ready();
@@ -392,11 +507,12 @@ function teacher() {
     ${CONFIG.sheetUrl ? `<p class="lead">Class results arrive automatically in a private sheet. <a href="${CONFIG.sheetUrl}" target="_blank" rel="noopener">Open the class sheet</a> (only people the owner has shared it with can open it).</p><h2>Check individual codes</h2>` : ""}
     <p class="lead">Ask students to send their results code from "My report". Paste all the codes below, in any order and with any text around them. Nothing is uploaded: the numbers are worked out in this browser.</p>
     <textarea id="codes" aria-label="Paste student results codes" placeholder="Paste results codes here (they start with TF1.)"></textarea>
-    <div class="row"><button class="btn" id="add">Add codes</button><button class="btn ghost" id="mine">Add this device's results</button><button class="btn ghost" id="clear">Clear class</button></div>
+    <div class="row"><button class="btn" id="add">Add codes</button><button class="btn ghost" id="mine">Add this device's results</button><button class="btn ghost" id="clear">Clear class</button><button class="btn ghost" id="out2">Sign out</button></div>
     <div id="out"></div>`;
   $("#add").addEventListener("click", () => { Object.assign(classData, readCodes($("#codes").value)); $("#codes").value = ""; renderClass(); });
   $("#mine").addEventListener("click", () => { Object.assign(classData, readCodes(makeCode())); renderClass(); });
   $("#clear").addEventListener("click", () => { classData = {}; renderClass(); });
+  $("#out2").addEventListener("click", () => { setTeacher(false); classData = {}; go("home"); });
   renderClass();
 }
 function renderClass() {
