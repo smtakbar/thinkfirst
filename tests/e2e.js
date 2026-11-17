@@ -59,7 +59,10 @@ const path = require('path');
   ok('summary shown', (await p.locator('h1').innerText()).includes('done'));
   const stats = await p.locator('.stat b').allInnerTexts();
   ok('summary numbers 2/5, 1, 2, 2/3: ' + stats.join(' | '), stats.join('|') === '2/5|1|2|2/3');
+  ok('feedback question offered once the topic is finished', await p.locator('[data-fb]').count() === 3);
   await p.screenshot({ path: 'shot-summary-phone.png', fullPage: true });
+  await p.click('[data-fb="2"]');
+  ok('feedback thanked and buttons removed', await p.locator('[data-fb]').count() === 0 && (await p.locator('#fbCard').innerText()).includes('Thanks'));
   const rec = await p.evaluate(() => JSON.parse(localStorage.getItem('thinkfirst.v1')));
   const rows = Object.values(rec.r);
   ok('5 records stored', rows.length === 5);
@@ -106,7 +109,14 @@ const path = require('path');
   ok('diagram fits a phone-width card', await d.evaluate(() => { const s = document.querySelector('.fig svg'); return s.viewBox.baseVal.width <= 400; }));
   await d.screenshot({ path: 'shot-graph-desktop.png', fullPage: true });
   posts = posts.filter(x => !x.includes('|Graphs|'));
-  ok('8 anonymous rows sent to the class form (5 first, 3 second): ' + posts.length, posts.length === 8 && posts.filter(x => x.includes('|first|')).length === 5 && posts.filter(x => x.includes('|second|')).length === 3);
+  const kind = k => posts.filter(x => x.includes('|' + k + '|')).length;
+  ok('11 anonymous rows sent to the class form (5 first, 3 second, 1 start, 1 finish, 1 feedback): ' + posts.length, posts.length === 11 && kind('first') === 5 && kind('second') === 3 && kind('start') === 1 && kind('finish') === 1 && kind('feedback') === 1);
+  ok('every row has 13 fields', posts.every(x => x.split(String.fromCharCode(124)).length === 13));
+  // doing the same topic again sends no second start, finish or feedback row
+  const before = posts.length;
+  await p.click('nav [data-nav="home"]'); await p.click('[data-topic="stackq"]');
+  for (let i = 0; i < 5; i++) { const q = await currentQ(); await pick(q.answer); await p.locator('#conf label').first().click(); await p.click('#commit'); await p.click('#next'); }
+  ok('repeat of a topic sends no duplicate rows and does not ask for feedback again', posts.length === before && await p.locator('[data-fb]').count() === 0);
   ok('no page errors: ' + errs.join('; '), errs.length === 0);
   // data integrity of the bank
   const bad = Q.filter(q => q.options.length !== 4 || q.answer < 0 || q.answer > 3 || !q.h1 || !q.h2 || !q.why);

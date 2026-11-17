@@ -23,7 +23,9 @@ This is a hypothesis taken from the literature on cognitive offloading and from 
 |---|---|---|---|
 | Think-first score (primary) | Share of first-time questions solved without the solution being shown | Above 70% **[assumption]** | [not measured] |
 | Second-chance recovery | Share of missed questions answered correctly when they return | Above 50% **[assumption]** | [not measured] |
-| Completion | Share of students who finish at least 2 of 6 topics | Above 60% **[assumption]** | [not measured] |
+| Completion | Share of students who finish at least 2 of 6 topics (from `finish` rows) | Above 60% **[assumption]** | [not measured] |
+| Topic drop-off | Share of started topics that were not finished (`start` rows without a matching `finish` row) | Reported, no target | [not measured] |
+| Student sentiment | Replies to "You had to answer before the solution opened. How was that?" (helped, no difference, annoyed). Optional, asked once per student. | Reported, no target | [not measured] |
 | Guardrail: quick guesses | Share of first answers committed in under 4 seconds | Below 15% **[assumption]** | [not measured] |
 | Guardrail: overconfidence | Share of "sure" first answers that were wrong | Reported, no target | [not measured] |
 
@@ -48,7 +50,7 @@ This is a hypothesis taken from the literature on cognitive offloading and from 
 ## 7. Pilot plan
 1. Share the link with the class through the instructor. One line of instructions: finish two topics.
 2. After one week, read the Analysis tab of the class sheet and record the five metrics above.
-3. Ask five students two questions: what annoyed you, and when did you want the solution sooner.
+3. Read the feedback replies in the sheet, then ask five students two questions: what annoyed you, and when did you want the solution sooner.
 4. Decide from the data: keep, change or remove the three-attempt rule.
 
 ## 8. Next, in priority order

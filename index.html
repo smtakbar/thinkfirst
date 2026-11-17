@@ -183,6 +183,7 @@ function load() {
   if (mem) return mem;
   try { mem = JSON.parse(localStorage.getItem(KEY)) || null; } catch (e) { mem = null; }
   if (!mem || !mem.r) mem = { id: "s" + Math.random().toString(36).slice(2, 8), r: {} };
+  if (!mem.t) mem.t = {};     // per topic: s = start row sent, f = finish row sent. mem.fb = feedback given
   return mem;
 }
 function save() { try { localStorage.setItem(KEY, JSON.stringify(mem)); } catch (e) { /* private mode: keep in memory */ } }
@@ -227,6 +228,14 @@ function postRow(fields) {
   if (!CONFIG.formAction || !CONFIG.formEntry) return;
   try { const fd = new FormData(); fd.append(CONFIG.formEntry, fields.join("|")); fetch(CONFIG.formAction, { method: "POST", mode: "no-cors", body: fd }).catch(() => {}); } catch (e) { }
 }
+/* Topic events, sent once per student per topic so the sheet can show how many
+   students who start a topic also finish it. Same 13-field shape as answer rows. */
+function postEvent(kind, topic, n) {
+  const d = load(), t = d.t[topic.id] || (d.t[topic.id] = {}), flag = kind === "start" ? "s" : "f";
+  if (t[flag]) return;
+  t[flag] = 1; save(); postRow([d.id, topic.name, "-", "-", kind, n, 0, 0, 0, 0, 0, 0, 0]);
+}
+const FEEDBACK = [[2, "It helped"], [1, "No difference"], [0, "It annoyed me"]];
 const short = t => t.replace(/[|\n]/g, " ").slice(0, 90);
 
 /* ---------- navigation ---------- */
@@ -351,6 +360,7 @@ let S = null;
 function startSession(topicId) {
   const qs = shuffle(QUESTIONS.filter(q => q.topic === topicId));
   S = { topic: TOPICS.find(t => t.id === topicId), queue: qs, i: 0, phase: "main", results: [], retry: [] };
+  postEvent("start", S.topic, qs.length);
   showQuestion();
 }
 function showQuestion() {
@@ -441,6 +451,8 @@ function sessionEnd() {
   const main = S.results.filter(r => !r.second), sec = S.results.filter(r => r.second);
   const own = main.filter(r => r.first).length, shown = main.filter(r => r.shown).length;
   const worked = main.length - own - shown, rec = sec.filter(r => r.ok).length;
+  postEvent("finish", S.topic, main.length);
+  const askFb = load().fb === undefined;
   const line = shown === 0 ? "You never needed the solution in this topic."
     : `You needed the solution for ${shown} of ${main.length} questions.`;
   app.innerHTML = `
@@ -452,7 +464,17 @@ function sessionEnd() {
       <div class="stat"><b>${shown}</b><small>needed the solution</small></div>
       ${sec.length ? `<div class="stat"><b>${rec}/${sec.length}</b><small>recovered on second chance</small></div>` : ""}
     </div>
+    ${askFb ? `<div class="card" id="fbCard" style="margin:8px 0 6px"><fieldset><legend>One quick question (optional, no name attached)</legend>
+      <p style="margin:.2em 0 .6em">You had to answer before the solution opened. How was that?</p>
+      <div class="row" style="margin-top:0">${FEEDBACK.map(([v, label]) => `<button class="btn ghost" type="button" data-fb="${v}">${label}</button>`).join("")}</div>
+    </fieldset></div>` : ""}
     <div class="row"><button class="btn" id="more">Another topic</button><button class="btn ghost" id="rep">My report</button></div>`;
+  app.querySelectorAll("[data-fb]").forEach(b => b.addEventListener("click", () => {
+    const d = load(); if (d.fb !== undefined) return;
+    d.fb = Number(b.dataset.fb); save();
+    postRow([d.id, S.topic.name, "-", b.textContent, "feedback", d.fb, 0, 0, 0, 0, 0, 0, 0]);
+    $("#fbCard").innerHTML = `<p class="muted" style="margin:0" role="status">Thanks. That was sent without your name.</p>`;
+  }));
   $("#more").addEventListener("click", () => go("home")); $("#rep").addEventListener("click", () => go("report"));
 }
 
@@ -495,7 +517,7 @@ function report() {
   let armed = false;
   $("#reset").addEventListener("click", e => {
     if (!armed) { armed = true; e.target.textContent = "Tap again to clear everything"; return; }
-    mem = { id: load().id, r: {} }; save(); report();
+    mem = { id: load().id, r: {}, t: load().t, fb: load().fb }; save(); report();
   });
 }
 
