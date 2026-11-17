@@ -19,7 +19,7 @@ The Teacher view and its menu button are hidden until a teacher signs in through
 - `Form Responses 1`: raw rows as they arrive.
 - `Data`: the rows split into columns (student code, topic, question, attempts, hints, solution shown, first try, quick guess, confidence).
 - Row kinds (column E of `Data`): `first` and `second` are answers. `start` and `finish` mark a topic begun and completed, once per student per topic, with the question count in column F. `feedback` holds the reply in column D and its value in column F (2 helped, 1 no difference, 0 annoyed). The `Analysis` tab reads only `first` rows, so the other kinds do not change its numbers.
-- `Analysis`: topics ranked hardest first, and a dropdown in B12 that lists one topic's questions hardest first with the share who needed the solution and the count who were sure but wrong.
+- `Analysis`: topics ranked hardest first, and a dropdown in B12 that lists one topic's questions hardest first with the share who needed the solution and the count who were sure but wrong. To the right (columns I to L): students who started and finished each topic, students who finished at least 2 topics, and the feedback replies.
 
 Set `formAction` and `formEntry` to empty strings to switch collection off.
 
