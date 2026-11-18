@@ -16,7 +16,8 @@ const path = require('path');
   await p.screenshot({ path: 'shot-home-phone.png' });
   await p.click('[data-topic="stackq"]');
   const Q = await p.evaluate(() => window.TF_QUESTIONS);
-  let qn = 0, plan = ['right', 'wrong1', 'wrong2', 'wrong3', 'right'];
+  ok('overall progress starts at 0% and the bar has no motivational shouting', (await p.locator('#ov').innerText()).includes('0% of the quiz') && !(await p.locator('#ov').innerText()).includes('!'));
+  let qn = 0, plan =['right', 'wrong1', 'wrong2', 'wrong3', 'right'];
   async function currentQ() { const t = await p.locator('.qtext').innerText(); return Q.find(q => q.q === t); }
   async function pick(i) { await p.locator(`.opt[data-i="${i}"] input`).check(); }
   for (const mode of plan) {
@@ -29,7 +30,10 @@ const path = require('path');
     ok(`q${qn}: still disabled without confidence`, await p.locator('#commit').isDisabled());
     await p.locator('#conf label').first().click();
     await p.click('#commit');
-    if (mode === 'right') { ok(`q${qn}: correct shown`, await p.locator('.note.good').count() === 1); }
+    if (mode === 'right') {
+      ok(`q${qn}: correct shown`, await p.locator('.note.good').count() === 1);
+      if (qn === 1) ok('overall progress moves to 3% once the first question is answered', (await p.locator('#ov').innerText()).includes('3% of the quiz'));
+    }
     else {
       ok(`q${qn}: hint1 unlocked after 1 wrong`, await p.locator('#hintBtn').isVisible() && (await p.locator('#hintBtn').innerText()) === 'Show hint 1');
       ok(`q${qn}: solution still locked after 1 wrong`, await p.locator('#giveBtn').isHidden());

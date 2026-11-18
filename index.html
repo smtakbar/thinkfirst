@@ -58,6 +58,10 @@ a{color:var(--accent)}
 .steps li::before{content:counter(s);flex:none;display:grid;place-items:center;width:2.1em;height:2.1em;border-radius:50%;box-shadow:var(--in-sm);color:var(--accent);font-weight:700;font-size:.85rem}
 .bar{height:10px;border-radius:99px;box-shadow:var(--in-sm);overflow:hidden;margin:10px 0 24px;padding:2px}
 .bar i{display:block;height:100%;background:var(--accent);border-radius:99px;width:0;transition:width .3s}
+.ov{display:flex;align-items:center;gap:12px;margin:-12px 0 20px;font-size:.8rem;color:var(--muted)}
+.ov .t{flex:1;min-width:0}
+.ov .mini{flex:none;width:72px;height:4px;border-radius:99px;box-shadow:var(--in-sm);overflow:hidden}
+.ov .mini i{display:block;height:100%;background:var(--accent);opacity:.7;border-radius:99px}
 .qmeta{display:flex;justify-content:space-between;gap:12px;color:var(--muted);font-size:.85rem;font-weight:500}
 .qtext{font-size:1.14rem;line-height:1.45;letter-spacing:-.01em;margin:0 0 .8em}
 pre{background:none;box-shadow:var(--in);border-radius:16px;padding:14px 16px;overflow-x:auto;font:13.5px/1.55 var(--mono);margin:.4em 0 1.2em}
@@ -332,6 +336,20 @@ function figHtml(figs) {
   return list.length > 1 ? `<div class="figs">${list.map(one).join("")}</div>` : one(list[0]);
 }
 
+/* ---------- overall progress (questions met so far, out of the whole bank) ---------- */
+const NUDGE = [
+  ["Good start.", "Every answer counts.", "Warming up.", "Steady beats fast."],
+  ["Nice rhythm.", "Keep thinking first.", "Momentum is building.", "One more."],
+  ["Past halfway.", "The hard middle is behind you.", "You are close.", "Your effort shows."],
+  ["Almost there.", "Final stretch.", "Finish strong.", "A few more to go."]
+];
+function overallHtml() {
+  const d = load(), total = QUESTIONS.length, done = QUESTIONS.filter(q => d.r[q.id]).length;
+  const p = Math.round(100 * done / total);
+  const msg = done >= total ? "Every question done. Well done." : NUDGE[Math.min(3, Math.floor(p / 25))][done % 4];
+  return `<div class="ov" id="ov"><span class="t">You have completed ${p}% of the quiz. ${msg}</span><span class="mini" aria-hidden="true"><i style="width:${p}%"></i></span></div>`;
+}
+
 /* ---------- home ---------- */
 function home() {
   const d = load();
@@ -351,6 +369,7 @@ function home() {
       <li>Missed questions come back once at the end.</li>
     </ol>
     <h2>Pick a topic</h2>
+    ${Object.keys(d.r).length ? overallHtml().replace('class="ov"', 'class="ov" style="margin:-4px 0 18px"') : ""}
     <div class="grid">${cards}</div>`;
   app.querySelectorAll("[data-topic]").forEach(b => b.addEventListener("click", () => go("session", b.dataset.topic)));
 }
@@ -371,6 +390,7 @@ function showQuestion() {
   app.innerHTML = `
     <div class="qmeta"><span>${esc(S.topic.name)}${second ? " · second chance" : ""}</span><span>Question ${S.i + 1} of ${S.queue.length}</span></div>
     <div class="bar"><i style="width:${100 * S.i / S.queue.length}%"></i></div>
+    ${overallHtml()}
     <div class="card">
       <p class="qtext">${esc(q.q)}</p>
       ${q.code ? `<pre>${esc(q.code)}</pre>` : ""}
@@ -407,6 +427,7 @@ function showQuestion() {
     else {
       const d = load();
       if (!d.r[q.id]) { const r = d.r[q.id] = { a: st.attempts, h: st.hints, v: st.shown ? 1 : 0, f: st.first ? 1 : 0, g: st.quick, c: st.conf, x: -1 }; save(); postRow([d.id, S.topic.name, q.id, short(q.q), "first", r.a, r.h, r.v, r.f, r.g, r.c, r.f, (r.c === 2 && !r.f) ? 1 : 0]); }
+      $("#ov").outerHTML = overallHtml();
       S.results.push({ id: q.id, first: st.first, shown: st.shown });
       if (!st.first) S.retry.push(q);
     }
