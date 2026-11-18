@@ -186,6 +186,7 @@ function load() {
   if (mem) return mem;
   try { mem = JSON.parse(localStorage.getItem(KEY)) || null; } catch (e) { mem = null; }
   if (!mem || !mem.r) mem = { id: "s" + Math.random().toString(36).slice(2, 8), r: {} };
+  if (!mem.l) mem.l = JSON.parse(JSON.stringify(mem.r));   // latest try per question. r stays the first try (class sheet, aced rule)
   if (!mem.t) mem.t = {};     // per topic: s = start row sent, f = finish row sent. mem.fb = feedback given
   return mem;
 }
@@ -336,7 +337,7 @@ function home() {
   const d = load();
   const cards = TOPICS.map(t => {
     const qs = QUESTIONS.filter(q => q.topic === t.id), done = qs.filter(q => d.r[q.id]);
-    const own = done.filter(q => d.r[q.id].f).length;
+    const own = done.filter(q => (d.l[q.id] || d.r[q.id]).f).length;
     const meta = done.length ? `${done.length} of ${qs.length} done, ${own} on first try` : `${qs.length} questions`;
     return `<button class="card topic" data-topic="${t.id}"><b>${esc(t.name)}</b><small>${esc(t.blurb)}</small><span class="meta">${meta}</span></button>`;
   }).join("");
@@ -404,9 +405,10 @@ function showQuestion() {
     st.done = true; commit.hidden = true; hintBtn.hidden = true; giveBtn.hidden = true; lock.hidden = true;
     f.querySelectorAll("input").forEach(x => x.disabled = true);
     $(`.opt[data-i="${q.answer}"]`).classList.add("right");
-    if (second) { const rec = load().r[q.id]; if (rec && rec.x === -1) { rec.x = st.first ? 1 : 0; save(); postRow([load().id, S.topic.name, q.id, short(q.q), "second", 0, 0, 0, 0, 0, 0, rec.x, 0]); } S.results.push({ id: q.id, second: true, ok: st.first }); }
+    if (second) { const lr = load().l[q.id]; if (lr) { lr.x = st.first ? 1 : 0; save(); } const rec = load().r[q.id]; if (rec && rec.x === -1) { rec.x = st.first ? 1 : 0; save(); postRow([load().id, S.topic.name, q.id, short(q.q), "second", 0, 0, 0, 0, 0, 0, rec.x, 0]); } S.results.push({ id: q.id, second: true, ok: st.first }); }
     else {
       const d = load();
+      d.l[q.id] = { a: st.attempts, h: st.hints, v: st.shown ? 1 : 0, f: st.first ? 1 : 0, g: st.quick, c: st.conf, x: -1 }; save();
       if (!d.r[q.id]) { const r = d.r[q.id] = { a: st.attempts, h: st.hints, v: st.shown ? 1 : 0, f: st.first ? 1 : 0, g: st.quick, c: st.conf, x: -1 }; save(); postRow([d.id, S.topic.name, q.id, short(q.q), "first", r.a, r.h, r.v, r.f, r.g, r.c, r.f, (r.c === 2 && !r.f) ? 1 : 0]); }
       $("#ov").outerHTML = overallHtml();
       S.results.push({ id: q.id, first: st.first, shown: st.shown });
@@ -507,26 +509,20 @@ function statsBlock(s) {
 
 /* ---------- my report ---------- */
 function report() {
-  const d = load(), s = summarise(d.r);
+  const d = load(), s = summarise(d.l);
   if (!s.n) { app.innerHTML = `<h1>My report</h1><p class="lead">Nothing yet. Finish a topic and your numbers appear here.</p><div class="row"><button class="btn" id="b">Start practising</button></div>`; $("#b").addEventListener("click", () => go("home")); return; }
   const rows = TOPICS.map(t => {
-    const rec = {}; QUESTIONS.filter(q => q.topic === t.id && d.r[q.id]).forEach(q => rec[q.id] = d.r[q.id]);
+    const rec = {}; QUESTIONS.filter(q => q.topic === t.id && d.l[q.id]).forEach(q => rec[q.id] = d.l[q.id]);
     const x = summarise(rec); if (!x.n) return "";
     return `<tr><td>${esc(t.name)}</td><td class="n">${x.n}</td><td class="n">${x.own}</td><td class="n">${x.worked}</td><td class="n">${x.shown}</td></tr>`;
   }).join("");
   app.innerHTML = `
     <h1>My report</h1>
-    <p class="lead">Counted from the first time you met each question (${s.n} of ${QUESTIONS.length} so far).</p>
+    <p class="lead">Counted from your latest try at each question (${s.n} of ${QUESTIONS.length} met so far). It updates every time you try a topic again.</p>
     ${statsBlock(s)}
     <div class="card tablewrap"><table>
       <thead><tr><th>Topic</th><th class="n">Done</th><th class="n">First try</th><th class="n">After hints</th><th class="n">Needed solution</th></tr></thead>
-      <tbody>${rows}</tbody></table></div>
-    <div class="row"><button class="btn ghost" id="reset">Clear my results</button></div>`;
-  let armed = false;
-  $("#reset").addEventListener("click", e => {
-    if (!armed) { armed = true; e.target.textContent = "Tap again to clear everything"; return; }
-    mem = { id: load().id, r: {}, t: load().t, fb: load().fb }; save(); report();
-  });
+      <tbody>${rows}</tbody></table></div>`;
 }
 
 /* ---------- teacher ---------- */

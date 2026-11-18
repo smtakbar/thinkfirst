@@ -122,6 +122,12 @@ const path = require('path');
   await p.click('nav [data-nav="home"]'); await p.click('[data-topic="stackq"]');
   for (let i = 0; i < 5; i++) { const q = await currentQ(); await pick(q.answer); await p.locator('#conf label').first().click(); await p.click('#commit'); await p.click('#next'); }
   ok('repeat of a topic sends no duplicate rows and does not ask for feedback again', posts.length === before && await p.locator('[data-fb]').count() === 0);
+  await p.click('nav [data-nav="report"]');
+  const rs2 = await p.locator('.stat b').allInnerTexts();
+  ok('a repeat try updates My report (think-first 60% to 100%): ' + rs2.join(' | '), rs2[0] === '100%' && rs2[1] === '100%');
+  ok('no Clear my results button', await p.locator('#reset').count() === 0 && !(await p.locator('main').innerText()).includes('Clear my results'));
+  const first = await p.evaluate(() => Object.values(JSON.parse(localStorage.getItem('thinkfirst.v1')).r).filter(r => r.f).length);
+  ok('first-try records are kept unchanged by the repeat (2 of 5)', first === 2);
   ok('no page errors: ' + errs.join('; '), errs.length === 0);
   // data integrity of the bank
   const bad = Q.filter(q => q.options.length !== 4 || q.answer < 0 || q.answer > 3 || !q.h1 || !q.h2 || !q.why);
