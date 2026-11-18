@@ -57,3 +57,6 @@ This is a hypothesis taken from the literature on cognitive offloading and from 
 1. (Done on 18 Nov 2026 for all 30 questions) Question variants with different numbers, so a second chance cannot be answered from memory.
 2. Topic-level difficulty ordering from the pilot data.
 3. Lab-style questions that ask for the bug in a short C program.
+
+## 9. Career strength message (added 18 Nov 2026)
+Students who ace a topic see which roles ask for the skills that topic exercises, and from two aced topics a short learning roadmap. The mapping uses ACM/IEEE CS2023 topic content and O*NET occupation descriptions. No study was found showing that a quiz score on one topic predicts success in a role, so the message says "could", is labelled a suggestion, and is **[not measured]** for any effect on motivation or choices.

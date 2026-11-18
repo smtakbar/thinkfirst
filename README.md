@@ -4,6 +4,7 @@ Data Structures practice where the student must commit an answer before any hint
 
 - `index.html`: the whole app (no build step, no dependencies, no server).
 - `questions.js`: the question bank (30 questions, 6 topics, two hints and a worked solution each, plus diagrams for tree, graph and linked list questions, and a second-chance version of every question).
+- `careers.js`: the career strength data (topic weights, six roles with one-line descriptions, four learning tracks, and the 63 stored topic combinations).
 - `PRD.md`: the problem, metrics, decisions and pilot plan.
 
 ## Run it
@@ -24,7 +25,10 @@ The Teacher view and its menu button are hidden until a teacher signs in through
 Set `formAction` and `formEntry` to empty strings to switch collection off.
 
 ## Tests
-A Playwright run covers the full flow on a phone-sized screen and the Teacher view on a desktop screen: 84 of 84 checks passed on 18 Nov 2026 (locks before commit, hint and solution unlock rules, second chance, stored records, report numbers, rows sent to the class form, teacher sign in and sign out, diagrams, topic start and finish rows, the feedback question, the overall progress line, Try again and Change topic, a different question on every second chance, My report updating on every repeat try, no duplicate rows on a repeat).
+A Playwright run covers the full flow on a phone-sized screen and the Teacher view on a desktop screen: 104 of 104 checks passed on 18 Nov 2026 (locks before commit, hint and solution unlock rules, second chance, stored records, report numbers, rows sent to the class form, teacher sign in and sign out, diagrams, topic start and finish rows, the feedback question, the overall progress line, Try again and Change topic, a different question on every second chance, My report updating on every repeat try, the aced-topic rule, the strength message for one, two and six topics, the roadmap shown only from two aced topics, all 63 role combinations checked against the written rule, green completed cards, no duplicate rows on a repeat).
 
 ## Adding questions
 Append objects to `TF_QUESTIONS` in `questions.js` in the same shape. Keep ids unique and never reuse an id. Diagrams are optional: `fig` shows with the question and `whyFig` shows with the solution (the comment at the top of `questions.js` gives the shapes). A question diagram must not show a step the student is asked to work out.
+
+## Career strength message
+A topic counts as aced when it was done for the first time, more than 70% of its questions were right on the first try, and "Guessing" was never chosen on a first answer in it. A repeat never removes an earned result. For the aced topics so far the app shows "You could be great at ..." with one or two roles and a one-line description of each, on the topic result screen and on My report. From two aced topics My report also offers a collapsed "Skills and technologies to develop" list. It is computed on the device from stored results: nothing new is sent or collected, and no links or job listings are shown. It is a sourced mapping of skills to roles, not a prediction of a career. The weights and rule are written at the top of `careers.js`.

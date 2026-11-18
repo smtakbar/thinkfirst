@@ -62,6 +62,18 @@ a{color:var(--accent)}
 .ov .t{flex:1;min-width:0}
 .ov .mini{flex:none;width:72px;height:4px;border-radius:99px;box-shadow:var(--in-sm);overflow:hidden}
 .ov .mini i{display:block;height:100%;background:var(--accent);opacity:.7;border-radius:99px}
+.topic.done{box-shadow:var(--up),inset 0 0 0 2px var(--good)}
+.badge{align-self:flex-start;font-size:.75rem;font-weight:700;color:var(--good);box-shadow:var(--in-sm);padding:2px 10px;border-radius:99px}
+.ready{color:var(--good);font-size:.82rem;line-height:1.4}
+.career{margin:18px 0}
+.career p{margin:.4em 0}
+.career ul{margin:.5em 0;padding-left:1.15em}
+.career li{margin:.35em 0}
+.small{font-size:.82rem}
+details.road{margin:20px 0;border-radius:20px;padding:6px 20px;box-shadow:var(--up-sm)}
+details.road summary{cursor:pointer;font-weight:650;padding:12px 0}
+details.road h3{font-size:1rem;margin:1em 0 .3em}
+details.road ul{margin:.3em 0;padding-left:1.15em}
 .qmeta{display:flex;justify-content:space-between;gap:12px;color:var(--muted);font-size:.85rem;font-weight:500}
 .qtext{font-size:1.14rem;line-height:1.45;letter-spacing:-.01em;margin:0 0 .8em}
 pre{background:none;box-shadow:var(--in);border-radius:16px;padding:14px 16px;overflow-x:auto;font:13.5px/1.55 var(--mono);margin:.4em 0 1.2em}
@@ -151,6 +163,7 @@ footer{margin-top:56px;color:var(--muted);font-size:.8rem;line-height:1.5;max-wi
 </div>
 
 <script src="questions.js"></script>
+<script src="careers.js"></script>
 <script>
 "use strict";
 /* ------------------------------------------------------------------
@@ -332,6 +345,42 @@ function overallHtml() {
   return `<div class="ov" id="ov"><span class="t">You have completed ${p}% of the quiz. ${msg}</span><span class="mini" aria-hidden="true"><i style="width:${p}%"></i></span></div>`;
 }
 
+/* ---------- career strength message and roadmap ----------
+   Computed on this device from the first-try records. Nothing new is sent or collected. */
+const CAR = window.TF_CAREERS;
+/* A topic is aced when every question was met, more than 70% were right on the first try,
+   and "Guessing" was never chosen on a first answer. First-try records never change, so a
+   repeat of a topic cannot remove an earned result. */
+function acedTopics(r) {
+  return TOPICS.filter(t => {
+    const qs = QUESTIONS.filter(q => q.topic === t.id), recs = qs.map(q => r[q.id]);
+    if (!qs.length || recs.some(x => !x)) return false;
+    return recs.filter(x => x.f).length / qs.length > 0.7 && !recs.some(x => x.c === 0);
+  });
+}
+const joinNames = a => a.length < 2 ? a.join("") : a.slice(0, -1).join(", ") + " and " + a[a.length - 1];
+function careerFor(aced) {
+  const c = CAR.combos[aced.map(t => CAR.topicLetters[t.id]).sort().join("")];
+  return { roles: c.roles.map(n => CAR.roles.find(r => r.name === n)), tracks: c.tracks };
+}
+function careerHtml(aced) {
+  if (!aced.length) return "";
+  const { roles } = careerFor(aced);
+  return `<div class="card career" id="career">
+    <p>You worked through ${esc(joinNames(aced.map(t => t.name)))} without guessing once. You could be great at ${roles.map(r => esc(r.name)).join(" or ")}.</p>
+    <ul>${roles.map(r => `<li><b>${esc(r.name)}</b>: for someone who ${esc(r.desc)}.</li>`).join("")}</ul>
+    <p class="muted small">Based on common skill requirements for these roles. It is a suggestion, not a prediction.</p>
+  </div>`;
+}
+function roadmapHtml(aced) {
+  if (aced.length < 2) return "";
+  const { tracks } = careerFor(aced);
+  return `<details class="road" id="road"><summary>Skills and technologies to develop</summary>
+    <h3>Foundation</h3><ul>${CAR.foundation.map(x => `<li>${esc(x)}</li>`).join("")}</ul>
+    ${tracks.map(t => `<h3>Track: ${esc(t)}</h3><ul>${CAR.tracks[t].stack.map(x => `<li>${esc(x)}</li>`).join("")}</ul><p class="muted small" style="margin:.3em 0">Projects: ${CAR.tracks[t].projects.map(esc).join(", ")}.</p>`).join("")}
+  </details>`;
+}
+
 /* ---------- home ---------- */
 function home() {
   const d = load();
@@ -339,7 +388,8 @@ function home() {
     const qs = QUESTIONS.filter(q => q.topic === t.id), done = qs.filter(q => d.r[q.id]);
     const own = done.filter(q => (d.l[q.id] || d.r[q.id]).f).length;
     const meta = done.length ? `${done.length} of ${qs.length} done, ${own} on first try` : `${qs.length} questions`;
-    return `<button class="card topic" data-topic="${t.id}"><b>${esc(t.name)}</b><small>${esc(t.blurb)}</small><span class="meta">${meta}</span></button>`;
+    const full = qs.length > 0 && done.length === qs.length;
+    return `<button class="card topic${full ? " done" : ""}" data-topic="${t.id}"><b>${esc(t.name)}</b>${full ? `<span class="badge">Completed</span>` : ""}<small>${esc(t.blurb)}</small><span class="meta">${meta}</span>${full ? `<small class="ready">Your report for finishing this topic is ready. Open My report to see our analysis.</small>` : ""}</button>`;
   }).join("");
   app.innerHTML = `
     <p class="kicker">Data Structures</p>
@@ -481,6 +531,7 @@ function sessionEnd() {
       <div class="stat"><b>${shown}</b><small>needed the solution</small></div>
       ${sec.length ? `<div class="stat"><b>${rec}/${sec.length}</b><small>recovered on second chance</small></div>` : ""}
     </div>
+    ${careerHtml(acedTopics(load().r))}
     ${askFb ? `<div class="card" id="fbCard" style="margin:8px 0 6px"><fieldset><legend>One quick question (optional, no name attached)</legend>
       <p style="margin:.2em 0 .6em">You had to answer before the solution opened. How was that?</p>
       <div class="row" style="margin-top:0">${FEEDBACK.map(([v, label]) => `<button class="btn ghost" type="button" data-fb="${v}">${label}</button>`).join("")}</div>
@@ -519,10 +570,12 @@ function report() {
   app.innerHTML = `
     <h1>My report</h1>
     <p class="lead">Counted from your latest try at each question (${s.n} of ${QUESTIONS.length} met so far). It updates every time you try a topic again.</p>
+    ${careerHtml(acedTopics(d.r))}
     ${statsBlock(s)}
     <div class="card tablewrap"><table>
       <thead><tr><th>Topic</th><th class="n">Done</th><th class="n">First try</th><th class="n">After hints</th><th class="n">Needed solution</th></tr></thead>
-      <tbody>${rows}</tbody></table></div>`;
+      <tbody>${rows}</tbody></table></div>
+    ${roadmapHtml(acedTopics(d.r))}`;
 }
 
 /* ---------- teacher ---------- */
