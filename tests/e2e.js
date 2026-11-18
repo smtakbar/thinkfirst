@@ -68,6 +68,7 @@ const path = require('path');
     await p.click('#commit'); await p.click('#next');
   }
   ok('summary shown', (await p.locator('h1').innerText()).includes('done'));
+  ok('no strength message when solutions were shown in the topic', await p.locator('#career').count() === 0);
   const stats = await p.locator('.stat b').allInnerTexts();
   ok('summary numbers 2/5, 1, 2, 2/3: ' + stats.join(' | '), stats.join('|') === '2/5|1|2|2/3');
   ok('feedback question offered once the topic is finished', await p.locator('[data-fb]').count() === 3);
@@ -126,30 +127,31 @@ const path = require('path');
   const CARE = await p.evaluate(() => window.TF_CAREERS);
   const TOPIC = await p.evaluate(() => window.TF_TOPICS);
   const L = CARE.topicLetters, nameOf = id => TOPIC.find(t => t.id === id).name;
-  const mk = (topic, rights, opts = {}) => { const r = {}; Q.filter(q => q.topic === topic).forEach((q, i) => { r[q.id] = { a: 1, h: 0, v: 0, f: i < rights ? 1 : 0, g: 0, c: i === opts.guessAt ? 0 : 2, x: -1 }; }); if (opts.drop !== undefined) delete r[Q.filter(q => q.topic === topic)[opts.drop].id]; return r; };
+  const mk = (topic, o = {}) => { const r = {}; Q.filter(q => q.topic === topic).forEach((q, i) => { const hint1 = i === o.hintOne, hint2 = i === o.twoHints; r[q.id] = { a: hint1 || hint2 ? 3 : 1, h: hint2 ? 2 : hint1 ? 1 : 0, v: i === o.shown ? 1 : 0, f: hint1 || hint2 ? 0 : 1, g: 0, c: i === o.guessAt ? 0 : 2, x: -1 }; }); if (o.drop !== undefined) delete r[Q.filter(q => q.topic === topic)[o.drop].id]; return r; };
   const seedPage = async recs => { const c = await b.newContext({ viewport: { width: 390, height: 844 } }); await c.route('**/docs.google.com/**', r => r.fulfill({ status: 200, body: '' })); const pg = await c.newPage(); pg.on('pageerror', e => errs.push(String(e))); await pg.goto(url); await pg.evaluate(r => localStorage.setItem('thinkfirst.v1', JSON.stringify({ id: 'sx', r, l: JSON.parse(JSON.stringify(r)), t: {} })), Object.assign({}, ...recs)); await pg.reload(); return pg; };
   const acedIn = (pg, recs) => pg.evaluate(r => acedTopics(r).map(t => t.id), Object.assign({}, ...recs));
   const pg0 = await seedPage([]);
-  ok('aced rule: 4 of 5 right and no guessing counts', (await acedIn(pg0, [mk('stackq', 4)])).join() === 'stackq');
-  ok('aced rule: 3 of 5 right does not count', (await acedIn(pg0, [mk('stackq', 3)])).length === 0);
-  ok('aced rule: 5 of 5 right but Guessing chosen once does not count', (await acedIn(pg0, [mk('stackq', 5, { guessAt: 2 })])).length === 0);
-  ok('aced rule: 4 of 5 right with Guessing on the wrong one does not count', (await acedIn(pg0, [mk('stackq', 4, { guessAt: 4 })])).length === 0);
-  ok('aced rule: a topic with an unmet question does not count', (await acedIn(pg0, [mk('stackq', 5, { drop: 4 })])).length === 0);
+  ok('aced rule: no solution, at most 1 hint each, no Guessing, all questions finished counts', (await acedIn(pg0, [mk('stackq')])).join() === 'stackq');
+  ok('aced rule: a wrong first answer with exactly 1 hint opened still counts', (await acedIn(pg0, [mk('stackq', { hintOne: 2 })])).join() === 'stackq');
+  ok('aced rule: one question with the solution shown does not count', (await acedIn(pg0, [mk('stackq', { shown: 1 })])).length === 0);
+  ok('aced rule: one question with 2 hints does not count', (await acedIn(pg0, [mk('stackq', { twoHints: 3 })])).length === 0);
+  ok('aced rule: one Guessing first answer does not count', (await acedIn(pg0, [mk('stackq', { guessAt: 2 })])).length === 0);
+  ok('aced rule: a topic that is not finished does not count', (await acedIn(pg0, [mk('stackq', { drop: 4 })])).length === 0);
   await pg0.click('nav [data-nav="report"]');
   ok('no strength message for a student with no aced topic', await pg0.locator('#career').count() === 0);
-  const pgNot = await seedPage([mk('stackq', 3)]); await pgNot.click('nav [data-nav="report"]');
+  const pgNot = await seedPage([mk('stackq', { shown: 0 })]); await pgNot.click('nav [data-nav="report"]');
   ok('no strength message when the topic was not aced', await pgNot.locator('#career').count() === 0 && await pgNot.locator('#road').count() === 0);
-  const pg1 = await seedPage([mk('stackq', 5)]); await pg1.click('nav [data-nav="report"]');
+  const pg1 = await seedPage([mk('stackq')]); await pg1.click('nav [data-nav="report"]');
   const one = CARE.combos.B, oneNames = one.roles.join(' or ');
   const t1 = await pg1.locator('#career').innerText();
   ok('one aced topic: exact wording, with each role description', t1.includes('You worked through Stacks and Queues without guessing once. You could be great at ' + oneNames + '.') && one.roles.every(n => t1.includes(n + ': for someone who ' + CARE.roles.find(r => r.name === n).desc)));
   ok('one aced topic: suggestion note shown, roadmap hidden', t1.includes('It is a suggestion, not a prediction.') && await pg1.locator('#road').count() === 0);
-  const pg2 = await seedPage([mk('stackq', 5), mk('lists', 5)]); await pg2.click('nav [data-nav="report"]');
+  const pg2 = await seedPage([mk('stackq'), mk('lists')]); await pg2.click('nav [data-nav="report"]');
   const t2 = await pg2.locator('#career').innerText();
   ok('two aced topics: both named, roles for that pair', t2.includes('You worked through Stacks and Queues and Linked Lists without guessing once. You could be great at ' + CARE.combos.BC.roles.join(' or ') + '.'));
   ok('two aced topics: roadmap shown and collapsed by default', await pg2.locator('#road').count() === 1 && await pg2.locator('#road').evaluate(e => !e.open) && (await pg2.locator('#road').textContent()).includes('Foundation'));
   const all = ['search', 'stackq', 'lists', 'trees', 'graphs', 'sorthash'];
-  const pg6 = await seedPage(all.map(t => mk(t, 5))); await pg6.click('nav [data-nav="report"]');
+  const pg6 = await seedPage(all.map(t => mk(t))); await pg6.click('nav [data-nav="report"]');
   const t6 = await pg6.locator('#career').innerText();
   ok('all six aced: every topic named and the roles for ABCDEF shown', t6.includes('You worked through Arrays and Searching, Stacks and Queues, Linked Lists, Trees, Graphs and Sorting and Hashing without guessing once.') && t6.includes('You could be great at ' + CARE.combos.ABCDEF.roles.join(' or ') + '.'));
   const firstLine = x => x.split(String.fromCharCode(10))[0];
@@ -157,6 +159,11 @@ const path = require('path');
   console.log('WORDING two topics:', firstLine(t2));
   console.log('WORDING all six   :', firstLine(t6));
   await pg6.screenshot({ path: 'shot-report-career-phone.png', fullPage: true });
+  // records saved before this feature (older shape: no latest-try or topic fields) qualify on the next load
+  const cOld = await b.newContext({ viewport: { width: 390, height: 844 } }); await cOld.route('**/docs.google.com/**', r => r.fulfill({ status: 200, body: '' }));
+  const pgOld = await cOld.newPage(); pgOld.on('pageerror', e => errs.push(String(e))); await pgOld.goto(url);
+  await pgOld.evaluate(r => localStorage.setItem('thinkfirst.v1', JSON.stringify({ id: 'old', r })), mk('lists')); await pgOld.reload(); await pgOld.click('nav [data-nav="report"]');
+  ok('records saved before the feature qualify on the next load, nothing sent', (await pgOld.locator('#career').innerText()).includes('Linked Lists'));
   // all 63 combinations exist, have 1 or 2 valid roles, and match the written rule
   const keys = Object.keys(CARE.combos), letters = 'ABCDEF';
   const expected = []; for (let m = 1; m < 64; m++) expected.push([...letters].filter((_, i) => m & (1 << i)).join(''));
@@ -167,17 +174,17 @@ const path = require('path');
   // green card only for completed topics
   await pg2.click('nav [data-nav="home"]');
   ok('green card only for the completed topics, with a text label and the report line', await pg2.locator('.topic.done').count() === 2 && await pg2.locator('.topic.done .badge').allInnerTexts().then(a => a.every(x => x === 'Completed')) && (await pg2.locator('.topic.done').first().innerText()).includes('Your report for finishing this topic is ready. Open My report to see our analysis.'));
-  const pgPart = await seedPage([mk('stackq', 5, { drop: 4 })]);
+  const pgPart = await seedPage([mk('stackq', { drop: 4 })]);
   ok('a topic only partly done is not green', await pgPart.locator('.topic.done').count() === 0);
   ok('fresh student has no green card', await pg0.evaluate(() => { go('home'); return document.querySelectorAll('.topic.done').length; }) === 0);
   // message on the topic result screen, using every aced topic so far
-  const pgR = await seedPage([mk('lists', 5)]);
+  const pgR = await seedPage([mk('lists')]);
   await pgR.click('[data-topic="stackq"]');
   for (let i = 0; i < 5; i++) { const t = await pgR.locator('.qtext').innerText(); const q = Q.find(x => x.q === t); await pgR.locator(`.opt[data-i="${q.answer}"] input`).check(); await pgR.locator('#conf label').first().click(); await pgR.click('#commit'); await pgR.click('#next'); }
   const tr = await pgR.locator('#career').innerText();
   ok('result screen shows the message with every aced topic so far', tr.includes('Stacks and Queues and Linked Lists') && tr.includes('You could be great at ' + CARE.combos.BC.roles.join(' or ')));
   // a repeat with all wrong answers does not remove an earned result
-  const pgW = await seedPage([mk('stackq', 5), mk('lists', 5)]);
+  const pgW = await seedPage([mk('stackq'), mk('lists')]);
   await pgW.click('[data-topic="stackq"]');
   for (let i = 0; i < 5; i++) { const t = await pgW.locator('.qtext').innerText(); const q = Q.find(x => x.q === t); const w = [0, 1, 2, 3].filter(k => k !== q.answer); for (let a = 0; a < 3; a++) { await pgW.locator(`.opt[data-i="${w[a]}"] input`).check(); if (a === 0) await pgW.locator('#conf label').first().click(); await pgW.click('#commit'); } if (i < 4) await pgW.click('#next'); }
   await pgW.click('#change'); await pgW.click('nav [data-nav="report"]');

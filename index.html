@@ -348,14 +348,16 @@ function overallHtml() {
 /* ---------- career strength message and roadmap ----------
    Computed on this device from the first-try records. Nothing new is sent or collected. */
 const CAR = window.TF_CAREERS;
-/* A topic is aced when every question was met, more than 70% were right on the first try,
-   and "Guessing" was never chosen on a first answer. First-try records never change, so a
-   repeat of a topic cannot remove an earned result. */
+/* A topic is aced when the student has finished it (every question has a stored record) and,
+   for EVERY question in it, the solution was never shown (v is 0), no more than one hint was
+   opened (h is 0 or 1) and "Guessing" was not chosen on the first answer (c is not 0).
+   It reads the stored first-try records, so second-chance results do not change it, a repeat
+   of a topic cannot remove an earned result, and students who finished topics before this
+   feature existed qualify the next time they open the app. */
 function acedTopics(r) {
   return TOPICS.filter(t => {
-    const qs = QUESTIONS.filter(q => q.topic === t.id), recs = qs.map(q => r[q.id]);
-    if (!qs.length || recs.some(x => !x)) return false;
-    return recs.filter(x => x.f).length / qs.length > 0.7 && !recs.some(x => x.c === 0);
+    const qs = QUESTIONS.filter(q => q.topic === t.id);
+    return qs.length > 0 && qs.every(q => { const x = r[q.id]; return x && !x.v && x.h <= 1 && x.c !== 0; });
   });
 }
 const joinNames = a => a.length < 2 ? a.join("") : a.slice(0, -1).join(", ") + " and " + a[a.length - 1];

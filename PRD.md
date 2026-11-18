@@ -60,7 +60,7 @@ Results are from the sheet on 18 Nov 2026. "Excluding two heaviest students" rem
 ## 6. Career strength message: analysis and decisions
 **Purpose.** Give each student a reason to keep going by connecting what they did well to roles that ask for those skills. It is not a prediction of anyone's career.
 
-**Rule for "aced".** A topic counts when it was done for the first time, more than 70% of its questions were right on the first try, and "Guessing" was never chosen on a first answer in it. First-try records never change, so a repeat cannot remove an earned result.
+**Rule for "aced" (set by the author, 18 Nov 2026).** A topic counts when the student has finished it and, for every question in it, the solution was never shown, no more than one hint was opened and "Guessing" was not chosen on the first answer. The rule reads stored first-try records, so second-chance results do not change it, a repeat cannot remove an earned result, and students who finished topics before the feature shipped qualify the next time they open the app. Nothing new is sent.
 
 **Evidence chain and what was found.**
 - **Topic to ability, specialisation, role, roadmap** is sourced where possible to ACM/IEEE CS2023 (topic content and knowledge areas) and O*NET occupation pages (knowledge, skills, abilities of research, software, systems and database occupations). Links with no source are marked "reasoned, not sourced" in the working document.
