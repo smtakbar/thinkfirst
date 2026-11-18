@@ -1,6 +1,6 @@
 # Think First: product brief
 
-Status: live with a class since 17 Nov 2026. Early results below are read from the class sheet on 18 Nov 2026 (last row at 21:53, sheet time). **They come from anonymous browser codes, not counted people, and from a pilot that is still running. Anything not measured is marked [not measured].**
+Status: live with a class since 17 Nov 2026. Early results below are read from the class sheet on 18 Nov 2026 (last row at 21:53, sheet time). **Each anonymous browser code is counted as one student. A student who clears the browser or switches phone would count twice, so counts can run slightly high. The pilot is still running. Anything not measured is marked [not measured].**
 
 ## 1. Problem
 Students preparing for Data Structures exams can open a full solution (from a key, a friend or an AI assistant) before they have tried the question. They then recognise the answer without being able to produce it. Practice tools make this worse when the solution is one tap away.
@@ -22,27 +22,27 @@ This is a hypothesis taken from the literature on cognitive offloading and from 
 8. Diagrams for trees, graphs and linked lists, and powers written as superscripts (5x³ + 4x²), keep questions readable on a phone.
 
 ## 4. Success metrics
-Results are from the sheet on 18 Nov 2026. "Excluding two heaviest codes" removes the two codes that each answered all 30 questions (about 60 of the 144 first answers), because they dominate the totals. I cannot tell whether those two are fast students or testers.
+Results are from the sheet on 18 Nov 2026. "Excluding two heaviest students" removes the two students who each answered all 30 questions (about 60 of the 144 first answers), because they dominate the totals. I cannot tell whether those two are fast students or testers.
 
-| Metric | Definition | Target | Result, all codes | Result, excluding two heaviest codes |
+| Metric | Definition | Target | Result, all students | Result, excluding two heaviest students |
 |---|---|---|---|---|
-| Think-first score (primary) | Share of first-time questions solved without the solution being shown | Above 70% **[assumption]** | 87.5% (144 first answers, 24 codes) | 84.5% (84 first answers, 22 codes) |
+| Think-first score (primary) | Share of first-time questions solved without the solution being shown | Above 70% **[assumption]** | 87.5% (144 first answers, 24 students) | 84.5% (84 first answers, 22 students) |
 | Second-chance recovery | Share of missed questions answered correctly when they return | Above 50% **[assumption]** | 80% (28 of 35) | 78% (18 of 23) |
-| Completion | Share of students who answered at least one question that finish at least 2 of 6 topics (from `finish` rows) | Above 60% **[assumption]** | **Not met.** 17% (4 of 24 codes that answered) | 9% (2 of 22) |
-| Topic drop-off | Share of started topics that were not finished (`start` rows without a matching `finish` row) | Reported, no target | 74% (62 of 84 started topic and code pairs) | [not computed] |
+| Completion | Share of students who answered at least one question that finish at least 2 of 6 topics (from `finish` rows) | Above 60% **[assumption]** | **Not met.** 17% (4 of 24 students who answered) | 9% (2 of 22) |
+| Topic drop-off | Share of started topics that were not finished (`start` rows without a matching `finish` row) | Reported, no target | 74% (62 of 84 started student and topic pairs) | [not computed] |
 | Student sentiment | Replies to "You had to answer before the solution opened. How was that?" Optional, asked once per student. | Reported, no target | 4 replies: 2 helped, 1 no difference, 1 annoyed. Too few to read | same |
 | Guardrail: quick guesses | Share of first answers committed in under 4 seconds | Below 15% **[assumption]** | 0.7% (1 of 144). Within the guardrail | 1.2% (1 of 84) |
 | Guardrail: overconfidence | Share of "sure" first answers that were wrong | Reported, no target | 31% (36 of 115) | 44% (25 of 57) |
 | First-try correct (context) | Share of first answers right on the first attempt | Reported, no target | 63% | 51% |
 
-**Completion denominator (decided by the author, 18 Nov 2026):** students who answered at least one question. Students who only opened a topic are not counted, because opening a page is not an attempt. For context, 4 of the 57 codes that opened a topic (7%) finished at least two topics. The sheet's per-topic "share of all students" figures still divide by everyone who opened a topic, so they are not the completion metric.
+**Completion denominator (decided by the author, 18 Nov 2026):** students who answered at least one question. Students who only opened a topic are not counted, because opening a page is not an attempt. For context, 4 of the 57 students who opened a topic (7%) finished at least two topics. The sheet's per-topic "share of all students" figures still divide by everyone who opened a topic, so they are not the completion metric.
 
 ## 5. Early pilot findings (18 Nov 2026, read from the class sheet)
-- **Reach.** 289 rows from 17 Nov 13:57 to 18 Nov 21:53. 57 browser codes opened a topic, 24 answered at least one question, 9 finished at least one topic and 4 finished at least two. Codes seen per day: 23 on 17 Nov and 37 on 18 Nov. A student who clears the browser or switches phone counts as a new code, and the instructor has not given a class size yet. **The number of students is not known** and must come from the instructor before any resume line ("piloted with a class of N students at MJCET") is written.
-- **The largest drop-off is before the first answer.** 33 of the 57 codes that opened a topic never answered a question (58%). The overall progress line was added on 18 Nov with this drop-off in mind. Their effect is **[not measured]**, and comparing before and after needs the timestamps of those changes.
-- **Hardest topic so far: Trees.** Share of first answers not right on the first try, share that needed the solution, first answers and codes behind them:
+- **Reach.** 289 rows from 17 Nov 13:57 to 18 Nov 21:53. 57 students opened a topic, 24 answered at least one question, 9 finished at least one topic and 4 finished at least two. Students seen per day: 23 on 17 Nov and 37 on 18 Nov. A student who clears the browser or switches phone would count as a new student, so these counts can run slightly high. The enrolled class size has not been given. For the resume line ("piloted with a class of N students at MJCET"), use the measured number of students who answered at least one question (24 on 18 Nov, to be re-read at the end of the pilot), or the enrolled number if the instructor provides it.
+- **The largest drop-off is before the first answer.** 33 of the 57 students who opened a topic never answered a question (58%). The overall progress line was added on 18 Nov with this drop-off in mind. Their effect is **[not measured]**, and comparing before and after needs the timestamps of those changes.
+- **Hardest topic so far: Trees.** Share of first answers not right on the first try, share that needed the solution, first answers and students behind them:
 
-| Topic | Not right first try | Needed the solution | First answers | Codes | Share of all 57 codes that attempted it |
+| Topic | Not right first try | Needed the solution | First answers | Students | Share of all 57 students who attempted it |
 |---|---|---|---|---|---|
 | Trees | 53% | 18% | 34 | 9 | 16% |
 | Arrays and Searching | 42% | 11% | 36 | 13 | 23% |
@@ -51,7 +51,7 @@ Results are from the sheet on 18 Nov 2026. "Excluding two heaviest codes" remove
 | Graphs | 29% | 11% | 28 | 7 | 12% |
 | Sorting and Hashing | 19% | 13% | 16 | 4 | 7% |
 
-  Treat the order as a first look. Stacks, Linked Lists and Sorting rest on 3 or 4 codes each, and the two heaviest codes supply a large share of every row.
+  Treat the order as a first look. Stacks, Linked Lists and Sorting rest on 3 or 4 students each, and the two heaviest students supply a large share of every row.
 - **Students are often sure and wrong.** Between a third and a half of "sure" first answers were wrong, which points to shared misconceptions worth class time. The question-level table in the sheet lists them.
 - **Guessing is rare.** Only 1 of 144 first answers was committed in under 4 seconds, so the 70% think-first score is not being inflated by instant guessing. It can still be inflated by the third-attempt rule (section 8).
 - **Second chance recovers most misses (78% to 80%).** Some of these rows came from the earlier version that re-asked the same question, so part of that figure may reflect memory. The 18 Nov version shows different questions, and a clean read needs data after that change.
@@ -84,7 +84,7 @@ Results are from the sheet on 18 Nov 2026. "Excluding two heaviest codes" remove
 | Accounts | None. Students are anonymous. | Sign-in with roll number | Removes the barrier to first use and avoids holding personal data. Cost: a student who clears the browser counts as a new student. |
 | Class data | Each answer is sent as one anonymous row to a Google Form that feeds a private Google Sheet | Students sending a results code by hand, or a custom server | The first version depended on every student remembering to send a code. The form needs no hosting and the teacher already uses Sheets. Cost: the form address is public, so rows could be forged. |
 | Results code and code checker | Removed (18 Nov 2026). The report is for the student and the sheet is for the teacher. | Keeping "Share with your teacher" and a code box in the Teacher view | The sheet already receives every answer, so the code was a second, manual path with no extra information. |
-| Teacher analysis | An Analysis tab in the sheet: topics ranked by difficulty with the number of codes behind each row, a dropdown that lists one topic's questions hardest first, completion and feedback tables, and the share of students who attempted each topic | A custom dashboard page | The sheet stays private to the people it is shared with, and the teacher can sort, filter and chart it without new software. |
+| Teacher analysis | An Analysis tab in the sheet: topics ranked by difficulty with the number of students behind each row, a dropdown that lists one topic's questions hardest first, completion and feedback tables, and the share of students who attempted each topic | A custom dashboard page | The sheet stays private to the people it is shared with, and the teacher can sort, filter and chart it without new software. |
 | Hints | Written by hand, two per question | AI-generated hints | An AI key cannot sit safely in a public page, and a wrong hint is worse than none. |
 | Unlock rule | One hint per wrong attempt | Timer-based unlock | An attempt is evidence of thinking. Waiting is not. |
 | Teacher access | One shared login ID and password, checked in the browser against a salted hash. The Teacher view and its menu button stay hidden until sign in. | Per-teacher accounts on a server | The page has no server and the pilot has one instructor. Cost: this hides the view from students but is not strong security. The class data stays protected by Google Sheet sharing. The password is short and the hash is public, so it could be cracked. |
@@ -99,9 +99,9 @@ Results are from the sheet on 18 Nov 2026. "Excluding two heaviest codes" remove
 - A student can still open an AI assistant in another tab. The tool makes thinking first the default path. It cannot enforce it.
 - Three wrong attempts always reach the answer, so the think-first score has a floor that guessing can inflate. Read it together with the quick-guess share.
 - 30 questions plus 30 second-chance versions is enough for a one-week pilot, not for a semester.
-- Rows are anonymous and unsigned. Codes are not people, and the numbers are for teaching decisions, not for grading.
-- Two codes supply about 40% of the first answers, so class-level percentages move a lot with them. Both versions of each metric are shown.
-- The class size is not known, so reach and completion have no true denominator.
+- Rows are anonymous and unsigned, and each browser code is counted as one student. A student on two phones counts twice, and rows could be forged because the form address is public. The numbers are for teaching decisions, not for grading.
+- Two students supply about 40% of the first answers, so class-level percentages move a lot with them. Both versions of each metric are shown.
+- The enrolled class size is not known, so reach has no true denominator. Completion uses students who answered as its denominator.
 - The career mapping is a sourced mapping of skills to roles. It is not validated against any outcome, and several links are reasoned, not sourced.
 
 ## 9. Pilot plan
