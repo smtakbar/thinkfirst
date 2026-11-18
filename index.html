@@ -106,7 +106,6 @@ th{color:var(--muted);font-weight:600;font-size:.8rem;white-space:nowrap}
 td.n,th.n{text-align:right}
 textarea{width:100%;min-height:130px;font:13px/1.45 var(--mono);border:0;border-radius:18px;padding:14px 16px;background:var(--bg);color:var(--ink);box-shadow:var(--in);resize:vertical}
 textarea::placeholder{color:var(--muted)}
-.codebox{word-break:break-all;font:12px/1.45 var(--mono);box-shadow:var(--in);padding:14px 16px;border-radius:16px;max-height:110px;overflow:auto}
 .muted{color:var(--muted)}
 .kicker{color:var(--accent);font-weight:600;font-size:.8rem;letter-spacing:.05em;text-transform:uppercase;margin:0 0 .7em}
 .fig{box-shadow:var(--in);border-radius:16px;padding:12px;margin:.4em 0 1.2em;overflow-x:auto;text-align:center}
@@ -209,24 +208,6 @@ function summarise(records) {
     sure: rows.filter(r => r.c === 2).length,
     retried: retried.length, recovered: retried.filter(r => r.x === 1).length
   };
-}
-function makeCode() {
-  const d = load();
-  const r = Object.entries(d.r).map(([id, x]) => [id, x.a, x.h, x.v, x.f, x.g, x.c, x.x]);
-  return "TF1." + btoa(JSON.stringify({ id: d.id, r }));
-}
-function readCodes(text) {
-  const out = {};
-  for (const m of text.match(/TF1\.[A-Za-z0-9+/=]+/g) || []) {
-    try {
-      const o = JSON.parse(atob(m.slice(4)));
-      if (!o.id || !Array.isArray(o.r)) continue;
-      const rec = {};
-      for (const [id, a, h, v, f, g, c, x] of o.r) if (QBY[id]) rec[id] = { a, h, v, f, g, c, x };
-      out[o.id] = rec;            // a later code from the same student replaces the earlier one
-    } catch (e) { /* skip unreadable code */ }
-  }
-  return out;
 }
 function postRow(fields) {
   if (!CONFIG.formAction || !CONFIG.formEntry) return;
@@ -432,8 +413,14 @@ function showQuestion() {
       if (!st.first) S.retry.push(q);
     }
     const last = S.i === S.queue.length - 1;
-    fb.insertAdjacentHTML("beforeend", `<div class="row"><button class="btn" id="next">${last ? (S.phase === "main" && S.retry.length ? "Go to second chance" : "See my result") : "Next question"}</button></div>`);
-    $("#next").addEventListener("click", next); $("#next").focus();
+    if (last && S.phase === "main" && S.retry.length) {
+      fb.insertAdjacentHTML("beforeend", `<p class="muted" style="margin:14px 0 0">You missed ${S.retry.length} question${S.retry.length > 1 ? "s" : ""}. Try again gives you a fresh version of each, with no hints.</p><div class="row"><button class="btn" id="retry">Let's try again</button><button class="btn ghost" id="change">Change topic</button></div>`);
+      $("#retry").addEventListener("click", startRetry); $("#retry").focus();
+      $("#change").addEventListener("click", () => { postEvent("finish", S.topic, S.results.filter(r => !r.second).length); go("home"); });
+    } else {
+      fb.insertAdjacentHTML("beforeend", `<div class="row"><button class="btn" id="next">${last ? "See my result" : "Next question"}</button></div>`);
+      $("#next").addEventListener("click", next); $("#next").focus();
+    }
   };
   const reveal = () => { st.shown = true; showWhy("Solution"); finish(); };
   hintBtn.addEventListener("click", () => { st.hints++; note("hint", "Hint " + st.hints, st.hints === 1 ? q.h1 : q.h2); updateUnlocks(); });
@@ -465,8 +452,15 @@ function showQuestion() {
 }
 function next() {
   if (S.i < S.queue.length - 1) { S.i++; return showQuestion(); }
-  if (S.phase === "main" && S.retry.length) { S.phase = "second"; S.queue = shuffle(S.retry); S.i = 0; return showQuestion(); }
   sessionEnd();
+}
+/* Second chance shows a different version of each missed question (TF_VARIANTS), recorded
+   against the original question id so the class sheet and the report stay consistent. */
+function startRetry() {
+  const V = window.TF_VARIANTS || {};
+  S.phase = "second"; S.i = 0;
+  S.queue = shuffle(S.retry.map(q => V[q.id] ? Object.assign({}, V[q.id], { id: q.id, topic: q.topic }) : q));
+  showQuestion();
 }
 function sessionEnd() {
   const main = S.results.filter(r => !r.second), sec = S.results.filter(r => r.second);
@@ -527,14 +521,7 @@ function report() {
     <div class="card tablewrap"><table>
       <thead><tr><th>Topic</th><th class="n">Done</th><th class="n">First try</th><th class="n">After hints</th><th class="n">Needed solution</th></tr></thead>
       <tbody>${rows}</tbody></table></div>
-    <h2>Share with your teacher</h2>
-    <p class="muted">This code holds your results only. It has no name in it. Copy it and send it to your teacher.</p>
-    <div class="codebox" id="code">${esc(makeCode())}</div>
-    <div class="row"><button class="btn" id="copy">Copy my results code</button><button class="btn ghost" id="reset">Clear my results</button><span id="msg" class="muted" aria-live="polite"></span></div>`;
-  $("#copy").addEventListener("click", async () => {
-    try { await navigator.clipboard.writeText(makeCode()); $("#msg").textContent = "Copied."; }
-    catch (e) { const r = document.createRange(); r.selectNodeContents($("#code")); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); $("#msg").textContent = "Code selected. Copy it manually."; }
-  });
+    <div class="row"><button class="btn ghost" id="reset">Clear my results</button></div>`;
   let armed = false;
   $("#reset").addEventListener("click", e => {
     if (!armed) { armed = true; e.target.textContent = "Tap again to clear everything"; return; }
@@ -543,41 +530,12 @@ function report() {
 }
 
 /* ---------- teacher ---------- */
-let classData = {};
 function teacher() {
   app.innerHTML = `
     <h1>Teacher view</h1>
-    ${CONFIG.sheetUrl ? `<p class="lead">Class results arrive automatically in a private sheet. <a href="${CONFIG.sheetUrl}" target="_blank" rel="noopener">Open the class sheet</a> (only people the owner has shared it with can open it).</p><h2>Check individual codes</h2>` : ""}
-    <p class="lead">Ask students to send their results code from "My report". Paste all the codes below, in any order and with any text around them. Nothing is uploaded: the numbers are worked out in this browser.</p>
-    <textarea id="codes" aria-label="Paste student results codes" placeholder="Paste results codes here (they start with TF1.)"></textarea>
-    <div class="row"><button class="btn" id="add">Add codes</button><button class="btn ghost" id="mine">Add this device's results</button><button class="btn ghost" id="clear">Clear class</button><button class="btn ghost" id="out2">Sign out</button></div>
-    <div id="out"></div>`;
-  $("#add").addEventListener("click", () => { Object.assign(classData, readCodes($("#codes").value)); $("#codes").value = ""; renderClass(); });
-  $("#mine").addEventListener("click", () => { Object.assign(classData, readCodes(makeCode())); renderClass(); });
-  $("#clear").addEventListener("click", () => { classData = {}; renderClass(); });
-  $("#out2").addEventListener("click", () => { setTeacher(false); classData = {}; go("home"); });
-  renderClass();
-}
-function renderClass() {
-  const out = $("#out"), students = Object.values(classData).filter(r => Object.keys(r).length);
-  if (!students.length) { out.innerHTML = `<p class="muted" style="margin-top:14px">No student results added yet.</p>`; return; }
-  const all = {}; let k = 0;
-  students.forEach(r => Object.entries(r).forEach(([id, x]) => all[id + "#" + (k++)] = x));
-  const s = summarise(all);
-  const perQ = QUESTIONS.map(q => {
-    const rs = students.map(r => r[q.id]).filter(Boolean); if (!rs.length) return null;
-    return { q, n: rs.length, own: rs.filter(r => r.f).length, shown: rs.filter(r => r.v).length, over: rs.filter(r => r.c === 2 && !r.f).length };
-  }).filter(Boolean).sort((a, b) => b.shown / b.n - a.shown / a.n || a.own / a.n - b.own / b.n);
-  const tname = id => TOPICS.find(t => t.id === id).name;
-  out.innerHTML = `
-    <h2>Class summary: ${students.length} student${students.length > 1 ? "s" : ""}, ${s.n} first attempts</h2>
-    ${statsBlock(s)}
-    <h2>Questions, hardest first</h2>
-    <div class="card tablewrap"><table>
-      <thead><tr><th>Question</th><th>Topic</th><th class="n">Students</th><th class="n">First try</th><th class="n">Needed solution</th><th class="n">Sure but wrong</th></tr></thead>
-      <tbody>${perQ.map(r => `<tr><td>${esc(r.q.q.length > 90 ? r.q.q.slice(0, 88) + "..." : r.q.q)}</td><td>${esc(tname(r.q.topic))}</td><td class="n">${r.n}</td><td class="n">${pct(r.own, r.n)}</td><td class="n">${pct(r.shown, r.n)}</td><td class="n">${r.over}</td></tr>`).join("")}</tbody>
-    </table></div>
-    <p class="muted">"Sure but wrong" points to a shared misconception, which is usually worth five minutes in class.</p>`;
+    ${CONFIG.sheetUrl ? `<p class="lead">Class results arrive automatically in a private sheet. <a href="${CONFIG.sheetUrl}" target="_blank" rel="noopener">Open the class sheet</a> (only people the owner has shared it with can open it).</p>` : `<p class="lead">Class collection is switched off.</p>`}
+    <div class="row"><button class="btn ghost" id="out2">Sign out</button></div>`;
+  $("#out2").addEventListener("click", () => { setTeacher(false); go("home"); });
 }
 
 go("home");

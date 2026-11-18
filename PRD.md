@@ -15,7 +15,7 @@ This is a hypothesis taken from the literature on cognitive offloading and from 
 1. A question opens with the hints and the solution locked.
 2. The student commits an answer and says how sure they are.
 3. Each wrong attempt rules out that option and unlocks one hint. The solution opens only after two real attempts, or automatically after the third.
-4. Missed questions come back once at the end of the topic with no hints (second chance).
+4. At the end of a topic the student can choose "Let's try again", which shows a different version of each missed question with no hints (second chance), or "Change topic".
 5. The student gets a report. Each answer also goes, with no name attached, to the teacher's private class sheet, which ranks topics by difficulty and lists the hardest questions in a chosen topic.
 
 ## 4. Success metrics
@@ -54,6 +54,6 @@ This is a hypothesis taken from the literature on cognitive offloading and from 
 4. Decide from the data: keep, change or remove the three-attempt rule.
 
 ## 8. Next, in priority order
-1. Question variants with different numbers, so a second chance cannot be answered from memory.
+1. (Done on 18 Nov 2026 for all 30 questions) Question variants with different numbers, so a second chance cannot be answered from memory.
 2. Topic-level difficulty ordering from the pilot data.
 3. Lab-style questions that ask for the bug in a short C program.

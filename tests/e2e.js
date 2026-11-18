@@ -18,10 +18,14 @@ const path = require('path');
   const Q = await p.evaluate(() => window.TF_QUESTIONS);
   ok('overall progress starts at 0% and the bar has no motivational shouting', (await p.locator('#ov').innerText()).includes('0% of the quiz') && !(await p.locator('#ov').innerText()).includes('!'));
   let qn = 0, plan =['right', 'wrong1', 'wrong2', 'wrong3', 'right'];
-  async function currentQ() { const t = await p.locator('.qtext').innerText(); return Q.find(q => q.q === t); }
+  const V = await p.evaluate(() => Object.values(window.TF_VARIANTS));
+  const shownKey = async () => (await p.locator('.qtext').innerText()) + '|' + ((await p.locator('.card > pre').count()) ? (await p.locator('.card > pre').innerText()).trim() : '');
+  const keyOf = q => q.q + '|' + (q.code || '').trim();
+  async function currentQ() { const k = await shownKey(); return Q.concat(V).find(q => keyOf(q) === k); }
+  const mainSeen = new Set();
   async function pick(i) { await p.locator(`.opt[data-i="${i}"] input`).check(); }
   for (const mode of plan) {
-    const q = await currentQ(); qn++;
+    const q = await currentQ(); qn++; mainSeen.add(keyOf(q));
     ok(`q${qn}: commit disabled before answer`, await p.locator('#commit').isDisabled());
     ok(`q${qn}: hint hidden before commit`, await p.locator('#hintBtn').isHidden());
     ok(`q${qn}: solution hidden before commit`, await p.locator('#giveBtn').isHidden());
@@ -50,12 +54,15 @@ const path = require('path');
         ok(`q${qn}: solution shown`, await p.locator('.note.why').count() === 1);
       }
     }
-    await p.click('#next');
+    if (qn < 5) await p.click('#next');
   }
-  // second chance: 3 missed questions
+  ok('last question offers Try again and Change topic, not a single next button', await p.locator('#retry').isVisible() && await p.locator('#change').isVisible() && await p.locator('#next').count() === 0);
+  await p.click('#retry');
+  // second chance: 3 missed questions, each shown as a different version
   ok('second chance started', (await p.locator('.qmeta').innerText()).includes('second chance'));
   for (let i = 0; i < 3; i++) {
     const q = await currentQ();
+    ok(`second ${i + 1}: a different question from the five already seen`, !!q && !mainSeen.has(await shownKey()));
     ok(`second ${i + 1}: no confidence asked`, await p.locator('#conf').count() === 0);
     await pick(i === 0 ? [0, 1, 2, 3].find(x => x !== q.answer) : q.answer);
     await p.click('#commit'); await p.click('#next');
@@ -76,29 +83,23 @@ const path = require('path');
   await p.reload(); await p.click('nav [data-nav="report"]');
   const rs = await p.locator('.stat b').allInnerTexts();
   ok('report stats: ' + rs.join(' | '), rs[0] === '60%' && rs[1] === '40%' && rs[3] === '67%');
-  const code = await p.locator('#code').innerText();
-  ok('results code generated', code.startsWith('TF1.'));
+  ok('no share-with-teacher section or results code on My report', await p.locator('#code').count() === 0 && !(await p.locator('main').innerText()).includes('Share with your teacher') && await p.evaluate(() => typeof makeCode === 'undefined'));
   // teacher view on desktop with 2 students (same data, different ids)
   const d = await ctx.newPage(); await d.setViewportSize({ width: 1200, height: 900 });
   await d.goto(url);
   // teacher sign in: wrong details are refused. The real password is not kept in this public repo,
   // so the test then marks the tab as signed in the same way a correct sign in does.
   await d.click('#tLogin');
-  ok('sign in form shown, not the Teacher view', await d.locator('#lf').count() === 1 && await d.locator('#codes').count() === 0);
+  ok('sign in form shown, not the Teacher view', await d.locator('#lf').count() === 1 && await d.locator('#out2').count() === 0);
   await d.fill('#lid', 'mjcet'); await d.fill('#lpw', 'wrong-password'); await d.click('#lgo');
   await d.waitForFunction(() => /not right/.test(document.querySelector('#lmsg').textContent));
-  ok('wrong password refused', await d.locator('#codes').count() === 0 && await d.locator('nav [data-nav="teacher"]').isHidden());
+  ok('wrong password refused', await d.locator('#out2').count() === 0 && await d.locator('nav [data-nav="teacher"]').isHidden());
   await d.evaluate(() => go('teacher'));
-  ok('Teacher view cannot be opened without signing in', await d.locator('#codes').count() === 0 && await d.locator('#lf').count() === 1);
+  ok('Teacher view cannot be opened without signing in', await d.locator('#out2').count() === 0 && await d.locator('#lf').count() === 1);
   await d.evaluate(() => sessionStorage.setItem('thinkfirst.teacher', '1')); await d.reload();
   ok('Teacher nav button visible after sign in', await d.locator('nav [data-nav="teacher"]').isVisible() && await d.locator('#tWrap').isHidden());
   await d.click('nav [data-nav="teacher"]');
-  const code2 = await p.evaluate(() => { const o = JSON.parse(atob(makeCode().slice(4))); o.id = 'other'; return 'TF1.' + btoa(JSON.stringify(o)); });
-  await d.fill('#codes', 'from whatsapp: ' + code + '\nand ' + code2 + ' thanks ' + code + ' TF1.garbage!!');
-  await d.click('#add');
-  const h = await d.locator('#out h2').first().innerText();
-  ok('teacher aggregates 2 students, duplicates and junk ignored: ' + h, h.includes('2 students') && h.includes('10 first attempts'));
-  ok('teacher table has 5 question rows', await d.locator('#out tbody tr').count() === 5);
+  ok('Teacher view links to the class sheet and has no results-code box', await d.locator('a[href*="docs.google.com/spreadsheets"]').count() === 1 && await d.locator('textarea').count() === 0 && await d.locator('#out2').count() === 1);
   await d.screenshot({ path: 'shot-teacher-desktop.png', fullPage: true });
   await d.click('nav [data-nav="home"]'); await d.screenshot({ path: 'shot-home-desktop.png', fullPage: true });
   await d.click('nav [data-nav="teacher"]'); await d.click('#out2');
@@ -125,6 +126,25 @@ const path = require('path');
   // data integrity of the bank
   const bad = Q.filter(q => q.options.length !== 4 || q.answer < 0 || q.answer > 3 || !q.h1 || !q.h2 || !q.why);
   ok('30 questions, all well formed, unique ids', Q.length === 30 && bad.length === 0 && new Set(Q.map(q => q.id)).size === 30);
+  const VV = await p.evaluate(() => window.TF_VARIANTS);
+  const badV = Q.filter(q => { const v = VV[q.id]; return !v || v.options.length !== 4 || new Set(v.options).size !== 4 || v.answer < 0 || v.answer > 3 || !v.h1 || !v.h2 || !v.why || keyOf(v) === keyOf(q); });
+  ok('every question has a different, well formed second-chance version', badV.length === 0 && Object.keys(VV).length === 30);
+  const s5 = Q.find(q => q.id === 's5');
+  ok('polynomials and powers are written in math style, no caret', s5.q.includes('x³') && s5.q.includes('x²') && !JSON.stringify([Q, Object.values(VV)]).includes('^'));
+  // Change topic after a missed question: back to home, finish row sent, no second-chance rows
+  const ctx2 = await b.newContext({ viewport: { width: 390, height: 844 } });
+  const posts2 = []; await ctx2.route('**/docs.google.com/**', r => { posts2.push(r.request().postData() || ''); r.fulfill({ status: 200, body: '' }); });
+  const z = await ctx2.newPage(); await z.goto(url); await z.click('[data-topic="lists"]');
+  for (let i = 0; i < 5; i++) {
+    const t = await z.locator('.qtext').innerText(); const q = Q.find(x => x.q === t);
+    const miss = i === 0; const wrongs = [0, 1, 2, 3].filter(k => k !== q.answer);
+    for (let a = 0; a < (miss ? 3 : 1); a++) { await z.locator(`.opt[data-i="${miss ? wrongs[a] : q.answer}"] input`).check(); if (a === 0) await z.locator('#conf label').first().click(); await z.click('#commit'); }
+    if (i < 4) await z.click('#next');
+  }
+  await z.click('#change');
+  ok('Change topic returns to the topic list', await z.locator('[data-topic]').count() === 6);
+  ok('Change topic still sends the finish row, and no second-chance rows', posts2.filter(x => x.includes('|finish|')).length === 1 && posts2.filter(x => x.includes('|second|')).length === 0);
+  ok('home shows overall progress after answering', (await z.locator('#ov').innerText()).includes('17% of the quiz'));
   for (const c of checks) console.log(c[0], c[1]);
   console.log(checks.filter(c => c[0] === 'PASS').length + ' of ' + checks.length + ' passed');
   await b.close();

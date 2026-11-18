@@ -3,7 +3,7 @@
 Data Structures practice where the student must commit an answer before any hint or solution opens.
 
 - `index.html`: the whole app (no build step, no dependencies, no server).
-- `questions.js`: the question bank (30 questions, 6 topics, two hints and a worked solution each, plus diagrams for tree, graph and linked list questions).
+- `questions.js`: the question bank (30 questions, 6 topics, two hints and a worked solution each, plus diagrams for tree, graph and linked list questions, and a second-chance version of every question).
 - `PRD.md`: the problem, metrics, decisions and pilot plan.
 
 ## Run it
@@ -24,7 +24,7 @@ The Teacher view and its menu button are hidden until a teacher signs in through
 Set `formAction` and `formEntry` to empty strings to switch collection off.
 
 ## Tests
-A Playwright run covers the full flow on a phone-sized screen and the Teacher view on a desktop screen: 73 of 73 checks passed on 18 Nov 2026 (locks before commit, hint and solution unlock rules, second chance, stored records, report numbers, rows sent to the class form, code sharing, duplicate and junk codes, teacher sign in and sign out, diagrams, topic start and finish rows, the feedback question, the overall progress line, no duplicate rows on a repeat).
+A Playwright run covers the full flow on a phone-sized screen and the Teacher view on a desktop screen: 81 of 81 checks passed on 18 Nov 2026 (locks before commit, hint and solution unlock rules, second chance, stored records, report numbers, rows sent to the class form, teacher sign in and sign out, diagrams, topic start and finish rows, the feedback question, the overall progress line, Try again and Change topic, a different question on every second chance, no duplicate rows on a repeat).
 
 ## Adding questions
 Append objects to `TF_QUESTIONS` in `questions.js` in the same shape. Keep ids unique and never reuse an id. Diagrams are optional: `fig` shows with the question and `whyFig` shows with the solution (the comment at the top of `questions.js` gives the shapes). A question diagram must not show a step the student is asked to work out.
