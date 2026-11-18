@@ -360,13 +360,13 @@ function home() {
     return `<button class="card topic" data-topic="${t.id}"><b>${esc(t.name)}</b><small>${esc(t.blurb)}</small><span class="meta">${meta}</span></button>`;
   }).join("");
   app.innerHTML = `
-    <p class="kicker">Data Structures · B.E. third semester</p>
+    <p class="kicker">Data Structures</p>
     <h1>Answer first. Help comes after.</h1>
     <p class="lead">Practice questions for Data Structures. Pick an answer. If you get it wrong, you get a hint and try again. After a few tries you see the full solution.</p>
     <ol class="steps" aria-label="How it works">
       <li>Pick an answer and say how sure you are.</li>
       <li>Wrong? Try again. Each try unlocks one hint.</li>
-      <li>Missed questions come back once at the end.</li>
+      <li>Missed questions? come back once at the end.</li>
     </ol>
     <h2>Pick a topic</h2>
     ${Object.keys(d.r).length ? overallHtml().replace('class="ov"', 'class="ov" style="margin:-4px 0 18px"') : ""}
