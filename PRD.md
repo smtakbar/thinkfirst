@@ -28,14 +28,14 @@ Results are from the sheet on 18 Nov 2026. "Excluding two heaviest codes" remove
 |---|---|---|---|---|
 | Think-first score (primary) | Share of first-time questions solved without the solution being shown | Above 70% **[assumption]** | 87.5% (144 first answers, 24 codes) | 84.5% (84 first answers, 22 codes) |
 | Second-chance recovery | Share of missed questions answered correctly when they return | Above 50% **[assumption]** | 80% (28 of 35) | 78% (18 of 23) |
-| Completion | Share of students who finish at least 2 of 6 topics (from `finish` rows) | Above 60% **[assumption]** | **Not met.** 4 codes. That is 7% of the 57 that opened a topic and 17% of the 24 that answered | 2 codes. 4% of 55 that opened and 9% of 22 that answered |
+| Completion | Share of students who answered at least one question that finish at least 2 of 6 topics (from `finish` rows) | Above 60% **[assumption]** | **Not met.** 17% (4 of 24 codes that answered) | 9% (2 of 22) |
 | Topic drop-off | Share of started topics that were not finished (`start` rows without a matching `finish` row) | Reported, no target | 74% (62 of 84 started topic and code pairs) | [not computed] |
 | Student sentiment | Replies to "You had to answer before the solution opened. How was that?" Optional, asked once per student. | Reported, no target | 4 replies: 2 helped, 1 no difference, 1 annoyed. Too few to read | same |
 | Guardrail: quick guesses | Share of first answers committed in under 4 seconds | Below 15% **[assumption]** | 0.7% (1 of 144). Within the guardrail | 1.2% (1 of 84) |
 | Guardrail: overconfidence | Share of "sure" first answers that were wrong | Reported, no target | 31% (36 of 115) | 44% (25 of 57) |
 | First-try correct (context) | Share of first answers right on the first attempt | Reported, no target | 63% | 51% |
 
-**Open decision for the author:** the completion target does not say whether to divide by students who answered at least one question or by those who opened a topic. Both are shown above. The class sheet also shows the share of all students who attempted each topic (see section 5).
+**Completion denominator (decided by the author, 18 Nov 2026):** students who answered at least one question. Students who only opened a topic are not counted, because opening a page is not an attempt. For context, 4 of the 57 codes that opened a topic (7%) finished at least two topics. The sheet's per-topic "share of all students" figures still divide by everyone who opened a topic, so they are not the completion metric.
 
 ## 5. Early pilot findings (18 Nov 2026, read from the class sheet)
 - **Reach.** 289 rows from 17 Nov 13:57 to 18 Nov 21:53. 57 browser codes opened a topic, 24 answered at least one question, 9 finished at least one topic and 4 finished at least two. Codes seen per day: 23 on 17 Nov and 37 on 18 Nov. A student who clears the browser or switches phone counts as a new code, and the instructor has not given a class size yet. **The number of students is not known** and must come from the instructor before any resume line ("piloted with a class of N students at MJCET") is written.
@@ -113,7 +113,7 @@ Results are from the sheet on 18 Nov 2026. "Excluding two heaviest codes" remove
 
 ## 10. Next, in priority order
 1. Raise the share of students who answer a first question (58% of those who opened a topic did not). Candidate: start the first question straight from the home screen.
-2. Settle the completion denominator and the target.
+2. Revisit the 60% completion target once the class size is known. It is an assumption, and 17% is far below it.
 3. Topic-level difficulty ordering from a larger sample.
 4. Lab-style questions that ask for the bug in a short C program.
 5. Unit-wise questions from the instructor's quiz, with two hints and a worked solution each.
