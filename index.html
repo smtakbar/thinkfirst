@@ -82,6 +82,11 @@ textarea.fbq{width:100%;min-height:84px;margin-top:6px;font:inherit;color:var(--
 .fbfield span{font-weight:600;font-size:.95rem}
 .fbfield small{color:var(--muted);float:right}
 /* feedback */
+.modal{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:20px;background:rgba(20,24,32,.45)}
+.modal .card{max-width:440px;width:100%}
+.modal h2{margin:0 0 .5em}
+.retryrow{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid rgba(128,138,155,.25)}
+.retryrow:first-child{border-top:0}
 .qmeta{display:flex;justify-content:space-between;gap:12px;color:var(--muted);font-size:.85rem;font-weight:500}
 .qtext{font-size:1.14rem;line-height:1.45;letter-spacing:-.01em;margin:0 0 .8em}
 pre{background:none;box-shadow:var(--in);border-radius:16px;padding:14px 16px;overflow-x:auto;font:13.5px/1.55 var(--mono);margin:.4em 0 1.2em}
@@ -170,6 +175,7 @@ footer{margin-top:56px;color:var(--muted);font-size:.8rem;line-height:1.5;max-wi
   </footer>
 </div>
 
+<script src="config.js"></script>
 <script src="questions.js"></script>
 <script src="careers.js"></script>
 <script>
@@ -208,6 +214,8 @@ function load() {
   try { mem = JSON.parse(localStorage.getItem(KEY)) || null; } catch (e) { mem = null; }
   if (!mem || !mem.r) mem = { id: "s" + Math.random().toString(36).slice(2, 8), r: {} };
   if (!mem.l) mem.l = JSON.parse(JSON.stringify(mem.r));   // latest try per question. r stays the first try (class sheet, aced rule)
+  if (!mem.ok) mem.ok = {};   // questions where some attempt met the unlock conditions
+  if (!mem.n) mem.n = {};     // attempts per question
   if (!mem.t) mem.t = {};     // per topic: s = start row sent, f = finish row sent. mem.fb = feedback given
   return mem;
 }
@@ -231,6 +239,17 @@ function summarise(records) {
     retried: retried.length, recovered: retried.filter(r => r.x === 1).length
   };
 }
+/* Integrity log: flag only, never block. Thresholds live in config.js. */
+const ICFG = (window.TF_CONFIG || {}).integrity || { awayMinSeconds: 20, answerMaxSeconds: 10, requireCopy: true };
+function integrityFlag(a) {
+  return (!ICFG.requireCopy || a.copies > 0) && a.awaySec > ICFG.awayMinSeconds && !!a.correct && a.sinceReturnSec < ICFG.answerMaxSeconds;
+}
+/* The unlock conditions, per question: no solution shown, at most one hint, no "Guessing" on the first answer. */
+const passes = x => !!x && !x.v && x.h <= 1 && x.c !== 0;
+const questionPasses = (d, q) => !!(d.ok[q.id] || passes(d.r[q.id]));
+const topicQs = id => QUESTIONS.filter(q => q.topic === id);
+const topicMet = (d, t) => { const qs = topicQs(t.id); return qs.length > 0 && qs.every(q => d.r[q.id]); };
+const blockedQs = (d, t) => topicQs(t.id).filter(q => d.r[q.id] && !questionPasses(d, q));
 function postRow(fields) {
   if (!CONFIG.formAction || !CONFIG.formEntry) return;
   try { const fd = new FormData(); fd.append(CONFIG.formEntry, fields.join("|")); fetch(CONFIG.formAction, { method: "POST", mode: "no-cors", body: fd }).catch(() => {}); } catch (e) { }
@@ -285,9 +304,10 @@ function login() {
   $("#lid").focus();
 }
 function go(view, arg) {
+  if (S && S.cleanup) S.cleanup();
   if (view === "teacher" && !(isTeacher() || teacherMem)) view = "login";
   document.querySelectorAll("nav button").forEach(b => b.dataset.nav === view ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
-  ({ home, report, teacher, login, feedback: feedbackView, session: startSession })[view](arg);
+  ({ home, report, teacher, login, feedback: feedbackView, session: startSession, retrytopic: startRetryTopic })[view](arg);
   app.focus({ preventScroll: true }); window.scrollTo(0, 0);
 }
 document.querySelectorAll("nav button").forEach(b => b.addEventListener("click", () => go(b.dataset.nav)));
@@ -359,15 +379,16 @@ const CAR = window.TF_CAREERS;
 /* A topic is aced when the student has finished it (every question has a stored record) and,
    for EVERY question in it, the solution was never shown (v is 0), no more than one hint was
    opened (h is 0 or 1) and "Guessing" was not chosen on the first answer (c is not 0).
-   It reads the stored first-try records, so second-chance results do not change it, a repeat
-   of a topic cannot remove an earned result, and students who finished topics before this
-   feature existed qualify the next time they open the app. */
-function acedTopics(r) {
+   The first try counts, and so does any later retry of that question (okMap), so a retry can
+   earn it and can never remove an earned result. Second-chance (Try again) results do not
+   count. Students who finished topics before this feature existed qualify on their next load. */
+function acedTopics(r, okMap) {
   return TOPICS.filter(t => {
     const qs = QUESTIONS.filter(q => q.topic === t.id);
-    return qs.length > 0 && qs.every(q => { const x = r[q.id]; return x && !x.v && x.h <= 1 && x.c !== 0; });
+    return qs.length > 0 && qs.every(q => { const x = r[q.id]; return x && ((okMap && okMap[q.id]) || (!x.v && x.h <= 1 && x.c !== 0)); });
   });
 }
+const acedNow = d => acedTopics(d.r, d.ok);
 const joinNames = a => a.length < 2 ? a.join("") : a.slice(0, -1).join(", ") + " and " + a[a.length - 1];
 function careerFor(aced) {
   const c = CAR.combos[aced.map(t => CAR.topicLetters[t.id]).sort().join("")];
@@ -448,6 +469,7 @@ function home() {
       <li>Wrong? Try again. Each try unlocks one hint.</li>
       <li>Missed questions? come back once at the end.</li>
     </ol>
+    <p class="muted small" id="fairNote" style="margin:18px 0 0">Activity such as copying and switching tabs is recorded to keep results fair.</p>
     ${feedbackNotice(d)}
     <h2>Pick a topic</h2>
     ${Object.keys(d.r).length ? overallHtml().replace('class="ov"', 'class="ov" style="margin:-4px 0 18px"') : ""}
@@ -467,10 +489,12 @@ function startSession(topicId) {
 function showQuestion() {
   const q = S.queue[S.i], second = S.phase === "second";
   const order = shuffle(q.options.map((_, i) => i));
-  const st = { tried: new Set(), attempts: 0, hints: 0, shown: false, done: false, t0: Date.now(), conf: null, quick: 0, first: null };
+  const st = { tried: new Set(), attempts: 0, hints: 0, shown: false, done: false, t0: Date.now(), conf: null, quick: 0, first: null, pos: S.i + 1 };
+  if (S.cleanup) S.cleanup();
+  const T = { shown: Date.now(), copies: 0, awayMs: 0, awayStart: null, lastReturn: null };
   const prose = q.options.some(o => o.length > 28);
   app.innerHTML = `
-    <div class="qmeta"><span>${esc(S.topic.name)}${second ? " · second chance" : ""}</span><span>Question ${S.i + 1} of ${S.queue.length}</span></div>
+    <div class="qmeta"><span>${esc(S.topic.name)}${second ? " · second chance" : S.phase === "retry" ? " · retry" : ""}</span><span>Question ${S.i + 1} of ${S.queue.length}</span></div>
     <div class="bar"><i style="width:${100 * S.i / S.queue.length}%"></i></div>
     ${overallHtml()}
     <div class="card">
@@ -497,6 +521,20 @@ function showQuestion() {
       <div id="fb" aria-live="polite"></div>
     </div>`;
   const f = $("#f"), commit = $("#commit"), fb = $("#fb"), hintBtn = $("#hintBtn"), giveBtn = $("#giveBtn"), lock = $("#lock");
+  // integrity log (flag only, copy and select stay enabled): copy or cut on the question, time away, time to answer
+  const qcard = $(".card");
+  const away = () => { if (T.awayStart === null) T.awayStart = Date.now(); };
+  const back = () => { if (T.awayStart !== null) { T.awayMs += Date.now() - T.awayStart; T.awayStart = null; T.lastReturn = Date.now(); } };
+  const onCopy = () => { T.copies++; };
+  const onVis = () => (document.hidden ? away() : back());
+  qcard.addEventListener("copy", onCopy); qcard.addEventListener("cut", onCopy);
+  document.addEventListener("visibilitychange", onVis); window.addEventListener("blur", away); window.addEventListener("focus", back);
+  S.cleanup = () => { document.removeEventListener("visibilitychange", onVis); window.removeEventListener("blur", away); window.removeEventListener("focus", back); S.cleanup = null; };
+  const attemptExtra = attemptNo => {
+    const awaySec = (T.awayMs + (T.awayStart !== null ? Date.now() - T.awayStart : 0)) / 1000;
+    const flag = integrityFlag({ copies: T.copies, awaySec, sinceReturnSec: st.lastCommit ? st.lastCommit.sinceReturnSec : 0, correct: !!(st.lastCommit && st.lastCommit.ok) });
+    return [T.copies, Math.round(awaySec), Math.round(st.firstCommitSec || 0), attemptNo, flag ? 1 : 0];
+  };
   const ready = () => { commit.disabled = st.done || !f.o.value || (!second && st.attempts === 0 && !f.c.value); };
   f.addEventListener("change", ready);
   const note = (cls, title, text, extra = "") => { fb.insertAdjacentHTML("beforeend", `<div class="note ${cls}"><b>${esc(title)}</b>${esc(text)}${extra}</div>`); };
@@ -505,11 +543,21 @@ function showQuestion() {
     st.done = true; commit.hidden = true; hintBtn.hidden = true; giveBtn.hidden = true; lock.hidden = true;
     f.querySelectorAll("input").forEach(x => x.disabled = true);
     $(`.opt[data-i="${q.answer}"]`).classList.add("right");
-    if (second) { const lr = load().l[q.id]; if (lr) { lr.x = st.first ? 1 : 0; save(); } const rec = load().r[q.id]; if (rec && rec.x === -1) { rec.x = st.first ? 1 : 0; save(); postRow([load().id, S.topic.name, q.id, short(q.q), "second", 0, 0, 0, 0, 0, 0, rec.x, 0]); } S.results.push({ id: q.id, second: true, ok: st.first }); }
-    else {
-      const d = load();
-      d.l[q.id] = { a: st.attempts, h: st.hints, v: st.shown ? 1 : 0, f: st.first ? 1 : 0, g: st.quick, c: st.conf, x: -1 }; save();
-      if (!d.r[q.id]) { const r = d.r[q.id] = { a: st.attempts, h: st.hints, v: st.shown ? 1 : 0, f: st.first ? 1 : 0, g: st.quick, c: st.conf, x: -1 }; save(); postRow([d.id, S.topic.name, q.id, short(q.q), "first", r.a, r.h, r.v, r.f, r.g, r.c, r.f, (r.c === 2 && !r.f) ? 1 : 0]); }
+    if (S.cleanup) S.cleanup();
+    const d = load(), prev = d.n[q.id] || (d.r[q.id] ? 1 : 0), attemptNo = prev + 1; d.n[q.id] = attemptNo;
+    if (second) {
+      const lr = d.l[q.id]; if (lr) { lr.x = st.first ? 1 : 0; }
+      const rec = d.r[q.id]; save();
+      if (rec && rec.x === -1) { rec.x = st.first ? 1 : 0; save(); postRow([d.id, S.topic.name, q.id, short(q.q), "second", 0, 0, 0, 0, 0, 0, rec.x, 0].concat(attemptExtra(attemptNo))); }
+      S.results.push({ id: q.id, second: true, ok: st.first });
+    } else {
+      const now = { a: st.attempts, h: st.hints, v: st.shown ? 1 : 0, f: st.first ? 1 : 0, g: st.quick, c: st.conf, x: -1 };
+      const firstTime = !d.r[q.id];
+      if (firstTime) d.r[q.id] = Object.assign({ p: st.pos }, now);
+      d.l[q.id] = Object.assign({ p: d.r[q.id].p }, now);
+      if (passes(now)) d.ok[q.id] = 1;
+      save();
+      postRow([d.id, S.topic.name, q.id, short(q.q), firstTime ? "first" : "retry", now.a, now.h, now.v, now.f, now.g, now.c, now.f, (now.c === 2 && !now.f) ? 1 : 0].concat(attemptExtra(attemptNo)));
       $("#ov").outerHTML = overallHtml();
       S.results.push({ id: q.id, first: st.first, shown: st.shown });
       if (!st.first) S.retry.push(q);
@@ -540,6 +588,7 @@ function showQuestion() {
     e.preventDefault(); if (commit.disabled) return;
     const pick = Number(f.o.value), ok = pick === q.answer;
     st.attempts++;
+    { const nowT = Date.now(); st.lastCommit = { ok, sinceReturnSec: (nowT - (T.lastReturn || T.shown)) / 1000 }; if (st.attempts === 1) st.firstCommitSec = (nowT - T.shown) / 1000; }
     if (st.attempts === 1) { st.first = ok; if (!second) { st.conf = Number(f.c.value); st.quick = (Date.now() - st.t0) / 1000 < QUICK_GUESS_SECONDS ? 1 : 0; $("#conf").hidden = true; } }
     if (ok) {
       note("good", st.attempts === 1 ? "Correct on the first try." : "Correct.", ""); showWhy("Why"); finish(); return;
@@ -554,6 +603,7 @@ function showQuestion() {
 }
 function next() {
   if (S.i < S.queue.length - 1) { S.i++; return showQuestion(); }
+  if (S.phase === "retry") return retryEnd();
   sessionEnd();
 }
 /* Second chance shows a different version of each missed question (TF_VARIANTS), recorded
@@ -563,6 +613,56 @@ function startRetry() {
   S.phase = "second"; S.i = 0;
   S.queue = shuffle(S.retry.map(q => V[q.id] ? Object.assign({}, V[q.id], { id: q.id, topic: q.topic }) : q));
   showQuestion();
+}
+/* Retry from the report or the pop-up: re-serves only the questions that blocked the unlock
+   (solution shown, more than one hint, or Guessing), as a different version of each. The
+   unlock conditions are the same as the first time. */
+function startRetryTopic(topicId) {
+  const d = load(), t = TOPICS.find(x => x.id === topicId), V = window.TF_VARIANTS || {};
+  const qs = blockedQs(d, t);
+  if (!qs.length) { go("report"); return; }
+  S = { topic: t, queue: shuffle(qs.map(q => V[q.id] ? Object.assign({}, V[q.id], { id: q.id, topic: q.topic }) : q)), i: 0, phase: "retry", results: [], retry: [] };
+  showQuestion();
+}
+function retryEnd() {
+  const d = load(), left = blockedQs(d, S.topic).length, aced = acedNow(d);
+  app.innerHTML = `
+    <h1>Retry finished</h1>
+    <p class="lead">${left ? `${left} question${left > 1 ? "s" : ""} in ${esc(S.topic.name)} still ${left > 1 ? "do" : "does"} not meet the conditions yet. You can retry again any time.` : `Every question in ${esc(S.topic.name)} now meets the conditions.`}</p>
+    ${careerHtml(aced)}
+    <div class="row"><button class="btn" id="rep">My report</button><button class="btn ghost" id="more">Another topic</button></div>`;
+  $("#more").addEventListener("click", () => go("home")); $("#rep").addEventListener("click", () => go("report"));
+}
+function blockerText(d, t) {
+  const qs = blockedQs(d, t), total = topicQs(t.id).length, rec = q => d.l[q.id] || d.r[q.id];
+  const shown = qs.filter(q => rec(q).v).length, hints = qs.filter(q => !rec(q).v && rec(q).h > 1).length;
+  const guess = qs.filter(q => rec(q).c === 0), pos = guess.map(q => d.r[q.id].p).filter(Boolean).sort((a, b) => a - b);
+  const parts = [];
+  if (shown) parts.push(`opened solutions on ${shown} of ${total} ${t.name} questions`);
+  if (hints) parts.push(`used more than one hint on ${hints}`);
+  if (guess.length) parts.push(pos.length === guess.length ? `chose Guessing on ${joinNames(pos.map(n => "Q" + n))}` : `chose Guessing on ${guess.length} question${guess.length > 1 ? "s" : ""}`);
+  return "You " + (parts.length > 2 ? parts.slice(0, -1).join(", ") + ", and " + parts[parts.length - 1] : parts.join(" and ")) + ".";
+}
+let popMem = false;
+function maybePopup() {
+  const d = load();
+  if (acedNow(d).length) return;
+  let seen = popMem; try { seen = sessionStorage.getItem("thinkfirst.popup") === "1" || popMem; } catch (e) { }
+  if (seen) return;
+  const cands = TOPICS.filter(t => topicMet(d, t) && blockedQs(d, t).length).sort((a, b) => blockedQs(d, b).length - blockedQs(d, a).length);
+  if (!cands.length) return;
+  popMem = true; try { sessionStorage.setItem("thinkfirst.popup", "1"); } catch (e) { }
+  const t = cands[0];
+  document.body.insertAdjacentHTML("beforeend", `<div class="modal" id="pop" role="dialog" aria-modal="true" aria-labelledby="popT"><div class="card">
+    <h2 id="popT">See what you can do on your own</h2>
+    <p>${esc(blockerText(d, t))} Retry those questions to show what you can do independently. Your career message is based on that.</p>
+    <div class="row"><button class="btn" id="popRetry">Retry now</button><button class="btn ghost" id="popNo">Not now</button></div></div></div>`);
+  const onKey = e => { if (e.key === "Escape") close(); };
+  const close = () => { const p = $("#pop"); if (p) p.remove(); document.removeEventListener("keydown", onKey); };
+  document.addEventListener("keydown", onKey);
+  $("#popNo").addEventListener("click", close);
+  $("#popRetry").addEventListener("click", () => { close(); go("retrytopic", t.id); });
+  $("#popRetry").focus();
 }
 function sessionEnd() {
   const main = S.results.filter(r => !r.second), sec = S.results.filter(r => r.second);
@@ -581,7 +681,7 @@ function sessionEnd() {
       <div class="stat"><b>${shown}</b><small>needed the solution</small></div>
       ${sec.length ? `<div class="stat"><b>${rec}/${sec.length}</b><small>recovered on second chance</small></div>` : ""}
     </div>
-    ${careerHtml(acedTopics(load().r))}
+    ${careerHtml(acedNow(load()))}
     ${askFb ? `<div class="card" id="fbCard" style="margin:8px 0 6px"><fieldset><legend>One quick question (optional, no name attached)</legend>
       <p style="margin:.2em 0 .6em">You had to answer before the solution opened. How was that?</p>
       <div class="row" style="margin-top:0">${FEEDBACK.map(([v, label]) => `<button class="btn ghost" type="button" data-fb="${v}">${label}</button>`).join("")}</div>
@@ -594,6 +694,7 @@ function sessionEnd() {
     $("#fbCard").innerHTML = `<p class="muted" style="margin:0" role="status">Thanks. That was sent without your name.</p>`;
   }));
   $("#more").addEventListener("click", () => go("home")); $("#rep").addEventListener("click", () => go("report"));
+  maybePopup();
 }
 
 /* ---------- shared stats block ---------- */
@@ -609,6 +710,21 @@ function statsBlock(s) {
 }
 
 /* ---------- my report ---------- */
+function genericCareerHtml(d) {
+  if (!TOPICS.some(t => topicMet(d, t))) return "";
+  return `<p class="notice" id="genericCareer">${esc(CAR.generic)}</p>`;
+}
+function retryHtml(d) {
+  const rows = TOPICS.filter(t => topicQs(t.id).some(q => d.r[q.id])).map(t => {
+    const met = topicQs(t.id).filter(q => d.r[q.id]);
+    return { t, blocked: blockedQs(d, t).length, share: met.filter(q => d.r[q.id].f).length / met.length };
+  });
+  if (!rows.length) return "";
+  const weakest = rows.slice().sort((a, b) => a.share - b.share || b.blocked - a.blocked)[0].t.id;
+  const list = rows.filter(r => r.blocked > 0);
+  if (!list.length) return "";
+  return `<h2>Retry to show what you can do on your own</h2><div class="card">${list.map(r => `<div class="retryrow"><span><b>${esc(r.t.name)}</b>${r.t.id === weakest ? " (your weakest topic)" : ""}<br><small class="muted">${r.blocked} question${r.blocked > 1 ? "s" : ""} to retry</small></span><button class="btn ghost" data-retry="${r.t.id}">Retry this topic</button></div>`).join("")}</div>`;
+}
 function report() {
   const d = load(), s = summarise(d.l);
   if (!s.n) { app.innerHTML = `<h1>My report</h1><p class="lead">Nothing yet. Finish a topic and your numbers appear here.</p><div class="row"><button class="btn" id="b">Start practising</button></div>`; $("#b").addEventListener("click", () => go("home")); return; }
@@ -620,12 +736,16 @@ function report() {
   app.innerHTML = `
     <h1>My report</h1>
     <p class="lead">Counted from your latest try at each question (${s.n} of ${QUESTIONS.length} met so far). It updates every time you try a topic again.</p>
-    ${careerHtml(acedTopics(d.r))}
+    ${genericCareerHtml(d)}
+    ${careerHtml(acedNow(d))}
     ${statsBlock(s)}
     <div class="card tablewrap"><table>
       <thead><tr><th>Topic</th><th class="n">Done</th><th class="n">First try</th><th class="n">After hints</th><th class="n">Needed solution</th></tr></thead>
       <tbody>${rows}</tbody></table></div>
-    ${roadmapHtml(acedTopics(d.r))}`;
+    ${retryHtml(d)}
+    ${roadmapHtml(acedNow(d))}`;
+  app.querySelectorAll("[data-retry]").forEach(b => b.addEventListener("click", () => go("retrytopic", b.dataset.retry)));
+  maybePopup();
 }
 
 /* ---------- teacher ---------- */

@@ -8,6 +8,8 @@
 //   4. The top role always wins. A second role is added if its score is at least 70% of the top score.
 //   5. Ties go to the order of the roles list. The tracks are the tracks of the chosen roles.
 window.TF_CAREERS = {
+  // One generic, non-personalised line shown to everyone after their first finished topic.
+  generic: "Data Structures are what software engineers use to make programs fast and memory-efficient, from route finding and search to databases and operating systems. Roles across software engineering ask for this skill when they need someone to choose the right structure for a problem.",
   topicLetters: { search: "A", stackq: "B", lists: "C", trees: "D", graphs: "E", sorthash: "F" },
   specs: ["ALG", "SYS", "DATA", "PLC"],
   topicWeights: { A: [1, 0, 1, 0], B: [0, 2, 0, 2], C: [0, 3, 0, 0], D: [1, 0, 2, 2], E: [3, 0, 0, 1], F: [2, 1, 2, 0] },

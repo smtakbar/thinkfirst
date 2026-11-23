@@ -69,12 +69,19 @@ const path = require('path');
   }
   ok('summary shown', (await p.locator('h1').innerText()).includes('done'));
   ok('no strength message when solutions were shown in the topic', await p.locator('#career').count() === 0);
+  ok('pop-up appears for an attempted but locked student, naming the exact blockers', await p.locator('#pop').isVisible() && (await p.locator('#pop').innerText()).includes('You opened solutions on 2 of 5 Stacks and Queues questions.') && (await p.locator('#pop').innerText()).includes('what you can do independently'));
+  ok('pop-up never blocks the report: Not now closes it and My report still opens', await (async () => { await p.click('#popNo'); const gone = await p.locator('#pop').count() === 0; return gone; })());
   const stats = await p.locator('.stat b').allInnerTexts();
   ok('summary numbers 2/5, 1, 2, 2/3: ' + stats.join(' | '), stats.join('|') === '2/5|1|2|2/3');
   ok('feedback question offered once the topic is finished', await p.locator('[data-fb]').count() === 3);
   await p.screenshot({ path: 'shot-summary-phone.png', fullPage: true });
   await p.click('[data-fb="2"]');
   ok('feedback thanked and buttons removed', await p.locator('[data-fb]').count() === 0 && (await p.locator('#fbCard').innerText()).includes('Thanks'));
+  await p.evaluate(() => go('report'));
+  ok('pop-up shows at most once per session and My report opens normally', await p.locator('#pop').count() === 0 && (await p.locator('h1').innerText()).includes('My report'));
+  ok('generic career line shows once a topic is finished, for a student with no unlock', await p.locator('#genericCareer').isVisible() && await p.locator('#career').count() === 0);
+  ok('report offers Retry this topic on the topic with blockers, marked as the weakest', (await p.locator('[data-retry="stackq"]').innerText()) === 'Retry this topic' && (await p.locator('.retryrow').innerText()).includes('your weakest topic') && (await p.locator('.retryrow').innerText()).includes('2 questions to retry'));
+  await p.evaluate(() => go('home'));
   const rec = await p.evaluate(() => JSON.parse(localStorage.getItem('thinkfirst.v1')));
   const rows = Object.values(rec.r);
   ok('5 records stored', rows.length === 5);
@@ -117,17 +124,20 @@ const path = require('path');
   posts = posts.filter(x => !x.includes('|Graphs|'));
   const kind = k => posts.filter(x => x.includes('|' + k + '|')).length;
   ok('11 anonymous rows sent to the class form (5 first, 3 second, 1 start, 1 finish, 1 feedback): ' + posts.length, posts.length === 11 && kind('first') === 5 && kind('second') === 3 && kind('start') === 1 && kind('finish') === 1 && kind('feedback') === 1);
-  ok('every row has 13 fields', posts.every(x => x.split(String.fromCharCode(124)).length === 13));
+  const nf = x => x.split(String.fromCharCode(124)).length, kindOf = x => x.split(String.fromCharCode(124))[4];
+  ok('answer rows (first, second, retry) have 18 fields with the integrity log, all other rows 13', posts.every(x => ['first', 'second', 'retry'].includes(kindOf(x)) ? nf(x) === 18 : nf(x) === 13));
   // doing the same topic again sends no second start, finish or feedback row
   const before = posts.length;
   await p.click('nav [data-nav="home"]'); await p.click('[data-topic="stackq"]');
   for (let i = 0; i < 5; i++) { const q = await currentQ(); await pick(q.answer); await p.locator('#conf label').first().click(); await p.click('#commit'); await p.click('#next'); }
-  ok('repeat of a topic sends no duplicate rows and does not ask for feedback again', posts.length === before && await p.locator('[data-fb]').count() === 0);
+  const added = posts.slice(before);
+  ok('repeat of a topic sends only retry rows (attempt 2 or later) and no new start, finish, feedback or first rows', added.length === 5 && added.every(x => kindOf(x) === 'retry' && Number(x.split(String.fromCharCode(124))[16]) >= 2) && await p.locator('[data-fb]').count() === 0);
+  ok('first-attempt difficulty uses only first rows: the repeat added none', posts.filter(x => kindOf(x) === 'first' && x.includes('|Stacks and Queues|')).length === 5);
   // ---- career strength message, roadmap, green cards ----
   const CARE = await p.evaluate(() => window.TF_CAREERS);
   const TOPIC = await p.evaluate(() => window.TF_TOPICS);
   const L = CARE.topicLetters, nameOf = id => TOPIC.find(t => t.id === id).name;
-  const mk = (topic, o = {}) => { const r = {}; Q.filter(q => q.topic === topic).forEach((q, i) => { const hint1 = i === o.hintOne, hint2 = i === o.twoHints; r[q.id] = { a: hint1 || hint2 ? 3 : 1, h: hint2 ? 2 : hint1 ? 1 : 0, v: i === o.shown ? 1 : 0, f: hint1 || hint2 ? 0 : 1, g: 0, c: i === o.guessAt ? 0 : 2, x: -1 }; }); if (o.drop !== undefined) delete r[Q.filter(q => q.topic === topic)[o.drop].id]; return r; };
+  const mk = (topic, o = {}) => { const r = {}; Q.filter(q => q.topic === topic).forEach((q, i) => { const hint1 = i === o.hintOne, hint2 = i === o.twoHints; r[q.id] = { p: i + 1, a: hint1 || hint2 ? 3 : 1, h: hint2 ? 2 : hint1 ? 1 : 0, v: i === o.shown ? 1 : 0, f: hint1 || hint2 ? 0 : 1, g: 0, c: i === o.guessAt ? 0 : 2, x: -1 }; }); if (o.drop !== undefined) delete r[Q.filter(q => q.topic === topic)[o.drop].id]; return r; };
   const seedPage = async recs => { const c = await b.newContext({ viewport: { width: 390, height: 844 } }); await c.route('**/docs.google.com/**', r => r.fulfill({ status: 200, body: '' })); const pg = await c.newPage(); pg.on('pageerror', e => errs.push(String(e))); await pg.goto(url); await pg.evaluate(r => localStorage.setItem('thinkfirst.v1', JSON.stringify({ id: 'sx', r, l: JSON.parse(JSON.stringify(r)), t: {} })), Object.assign({}, ...recs)); await pg.reload(); return pg; };
   const acedIn = (pg, recs) => pg.evaluate(r => acedTopics(r).map(t => t.id), Object.assign({}, ...recs));
   const pg0 = await seedPage([]);
@@ -178,6 +188,91 @@ const path = require('path');
   ok('after sending, the home notice thanks the student and has no button', (await pf.locator('#fbNotice').innerText()).includes('Thank you') && await pf.locator('#fbOpen').count() === 0);
   await pf.evaluate(() => go('feedback'));
   ok('feedback cannot be sent twice', await pf.locator('#fbf').count() === 0 && postsF.filter(x => x.includes('|survey|')).length === 2);
+  // ---- integrity flag, retry flow, pop-up conditions, first-attempt difficulty ----
+  const capPage = async seedRecs => {
+    const c = await b.newContext({ viewport: { width: 390, height: 844 } }); const out = []; await c.route('**/docs.google.com/**', r => { out.push(r.request().postData() || ''); r.fulfill({ status: 200, body: '' }); });
+    const pg = await c.newPage(); pg.on('pageerror', e => errs.push(String(e))); await pg.goto(url);
+    if (seedRecs) { await pg.evaluate(r => localStorage.setItem('thinkfirst.v1', JSON.stringify({ id: 'sr', r, l: JSON.parse(JSON.stringify(r)), t: {} })), Object.assign({}, ...seedRecs)); await pg.reload(); }
+    return { pg, out };
+  };
+  const bar = String.fromCharCode(124), fieldsOf = x => x.split(bar);
+  const cfgNow = await p.evaluate(() => JSON.parse(JSON.stringify(TF_CONFIG.integrity)));
+  ok('integrity thresholds live in config.js (20 s away, 10 s to answer)', cfgNow.awayMinSeconds === 20 && cfgNow.answerMaxSeconds === 10);
+  const flagCases = await p.evaluate(() => [
+    integrityFlag({ copies: 1, awaySec: 25, correct: true, sinceReturnSec: 5 }),
+    integrityFlag({ copies: 0, awaySec: 25, correct: true, sinceReturnSec: 5 }),
+    integrityFlag({ copies: 1, awaySec: 20, correct: true, sinceReturnSec: 5 }),
+    integrityFlag({ copies: 1, awaySec: 25, correct: true, sinceReturnSec: 10 }),
+    integrityFlag({ copies: 1, awaySec: 25, correct: false, sinceReturnSec: 5 }),
+    integrityFlag({ copies: 1, awaySec: 20.1, correct: true, sinceReturnSec: 9.9 })]);
+  ok('flag needs copy AND over 20 s away AND correct AND under 10 s after returning', flagCases.join() === 'true,false,false,false,false,true');
+  // live logging: copy, tab away, quick correct answer on return. Thresholds shortened only for the test.
+  const LG = await capPage([mk('lists')]);
+  await LG.pg.evaluate(() => { TF_CONFIG.integrity.awayMinSeconds = 0.3; });
+  await LG.pg.click('[data-topic="stackq"]');
+  const qt1 = await LG.pg.locator('.qtext').innerText(); const q1 = Q.find(x => x.q === qt1);
+  const prevented = await LG.pg.evaluate(() => { const c = document.querySelector('.card'); const e1 = new ClipboardEvent('copy', { bubbles: true, cancelable: true }); c.dispatchEvent(e1); const e2 = new MouseEvent('contextmenu', { bubbles: true, cancelable: true }); c.dispatchEvent(e2); return [e1.defaultPrevented, e2.defaultPrevented, getComputedStyle(document.querySelector('.qtext')).userSelect]; });
+  ok('copy, right-click and text selection are not disabled', prevented[0] === false && prevented[1] === false && prevented[2] !== 'none');
+  await LG.pg.evaluate(() => { window.dispatchEvent(new Event('blur')); });
+  await LG.pg.waitForTimeout(700);
+  await LG.pg.evaluate(() => { window.dispatchEvent(new Event('focus')); });
+  await LG.pg.locator(`.opt[data-i="${q1.answer}"] input`).check(); await LG.pg.locator('#conf label').first().click(); await LG.pg.click('#commit');
+  await LG.pg.waitForTimeout(400);
+  const row1 = LG.out.filter(x => fieldsOf(x)[4] === 'first').pop(), f1 = fieldsOf(row1);
+  ok('flagged attempt is logged with copy count, seconds away, seconds to answer, attempt number and flag: ' + f1.slice(4).join(' '), f1.length === 18 && f1[13] === '1' && Number(f1[14]) >= 1 && f1[16] === '1' && parseInt(f1[17]) === 1);
+  ok('a flagged attempt is only flagged: the answer is accepted and play continues', await LG.pg.locator('.note.good').count() === 1 && await LG.pg.locator('#next').isVisible());
+  await LG.pg.click('#next');
+  const qt2 = await LG.pg.locator('.qtext').innerText(); const q2 = Q.find(x => x.q === qt2);
+  await LG.pg.locator(`.opt[data-i="${[0, 1, 2, 3].find(k => k !== q2.answer)}"] input`).check(); await LG.pg.locator('#conf label').first().click(); await LG.pg.click('#commit');
+  await LG.pg.locator(`.opt[data-i="${q2.answer}"] input`).check(); await LG.pg.click('#commit');
+  await LG.pg.waitForTimeout(400);
+  const row2 = fieldsOf(LG.out.filter(x => fieldsOf(x)[4] === 'first').pop());
+  ok('an ordinary attempt is logged with flag 0 and no copy: ' + row2.slice(4).join(' '), row2[13] === '0' && parseInt(row2[17]) === 0 && row2[16] === '1');
+  // sheet rule: difficulty counts first rows that are not flagged. The flagged right answer is excluded, so the wrong one gives 100%.
+  const firstRows = LG.out.filter(x => fieldsOf(x)[4] === 'first').map(fieldsOf);
+  const diff = r => r.length ? r.filter(x => x[8] === '0').length / r.length : null;
+  ok('first-attempt difficulty excludes flagged attempts: ' + diff(firstRows.filter(x => parseInt(x[17]) !== 1)) + ' vs all ' + diff(firstRows) + ' rows ' + firstRows.length, diff(firstRows.filter(x => parseInt(x[17]) !== 1)) === 1 && diff(firstRows) === 0.5);
+  // retry serves only the questions that blocked the unlock, as different versions, with the same conditions
+  const stk = Q.filter(x => x.topic === 'stackq');
+  const blocked = Object.assign({}, mk('stackq', { shown: 0, twoHints: 1, guessAt: 2 }));
+  const R = await capPage([blocked]);
+  await R.pg.click('nav [data-nav="report"]'); await R.pg.click('#popNo'); await R.pg.click('[data-retry="stackq"]');
+  const served = await R.pg.evaluate(() => S.queue.map(q => q.id).sort());
+  ok('retry re-serves only the 3 blocked questions (solution shown, 2 hints, Guessing)', served.join() === [stk[0].id, stk[1].id, stk[2].id].sort().join());
+  const VV2 = await p.evaluate(() => window.TF_VARIANTS);
+  const shownTxt = await R.pg.locator('.qtext').innerText();
+  ok('retry serves a different version of the question', served.some(id => VV2[id].q === shownTxt && VV2[id].q !== Q.find(x => x.id === id).q) || served.some(id => (VV2[id].code || '') !== (Q.find(x => x.id === id).code || '')));
+  for (let i = 0; i < 3; i++) { const tx = await R.pg.locator('.qtext').innerText(); const cd = (await R.pg.locator('.card > pre').count()) ? (await R.pg.locator('.card > pre').innerText()).trim() : ''; const v = Object.values(VV2).find(x => x.q === tx && (x.code || '').trim() === cd); await R.pg.locator(`.opt[data-i="${v.answer}"] input`).check(); await R.pg.locator('#conf label').first().click(); await R.pg.click('#commit'); await R.pg.click('#next'); }
+  ok('retry rows are logged as retry with attempt 2, never as first attempts', R.out.filter(x => fieldsOf(x)[4] === 'retry').length === 3 && R.out.filter(x => fieldsOf(x)[4] === 'retry').every(x => fieldsOf(x)[16] === '2') && R.out.filter(x => fieldsOf(x)[4] === 'first').length === 0);
+  ok('a clean retry unlocks the career message (same conditions as before)', (await R.pg.locator('h1').innerText()).includes('Retry finished') && (await R.pg.locator('#career').innerText()).includes('Stacks and Queues'));
+  const R2 = await capPage([blocked]);
+  await R2.pg.click('nav [data-nav="report"]'); await R2.pg.click('#popNo'); await R2.pg.click('[data-retry="stackq"]');
+  for (let i = 0; i < 3; i++) {
+    const tx = await R2.pg.locator('.qtext').innerText(); const cd = (await R2.pg.locator('.card > pre').count()) ? (await R2.pg.locator('.card > pre').innerText()).trim() : ''; const v = Object.values(VV2).find(x => x.q === tx && (x.code || '').trim() === cd);
+    if (i === 0) { const w = [0, 1, 2, 3].filter(k => k !== v.answer); for (let a = 0; a < 3; a++) { await R2.pg.locator(`.opt[data-i="${w[a]}"] input`).check(); if (a === 0) await R2.pg.locator('#conf label').first().click(); await R2.pg.click('#commit'); } }
+    else { await R2.pg.locator(`.opt[data-i="${v.answer}"] input`).check(); await R2.pg.locator('#conf label').first().click(); await R2.pg.click('#commit'); }
+    await R2.pg.click('#next');
+  }
+  ok('a retry that again shows the solution does not unlock, and says one question is left', (await R2.pg.locator('.lead').innerText()).includes('1 question') && await R2.pg.locator('#career').count() === 0);
+  // pop-up conditions
+  const P1 = await capPage(null); await P1.pg.click('nav [data-nav="report"]');
+  ok('no pop-up for a new visitor who has not attempted anything', await P1.pg.locator('#pop').count() === 0);
+  ok('no generic career line before a topic is finished', await P1.pg.locator('#genericCareer').count() === 0);
+  await P1.pg.click('nav [data-nav="home"]');
+  ok('start screen discloses activity recording in one line', (await P1.pg.locator('#fairNote').innerText()) === 'Activity such as copying and switching tabs is recorded to keep results fair.');
+  const P2 = await capPage([mk('stackq', { drop: 4, shown: 0 })]); await P2.pg.click('nav [data-nav="report"]');
+  ok('no pop-up while no topic is finished', await P2.pg.locator('#pop').count() === 0);
+  const P3 = await capPage([mk('stackq')]); await P3.pg.click('nav [data-nav="report"]');
+  ok('no pop-up for a student who is already unlocked', await P3.pg.locator('#pop').count() === 0);
+  ok('the generic career line also shows to an unlocked student, beside the personalised message', await P3.pg.locator('#genericCareer').isVisible() && await P3.pg.locator('#career').isVisible() && (await P3.pg.locator('#genericCareer').innerText()).length > 60);
+  const P4 = await capPage([mk('stackq', { shown: 0, guessAt: 3 })]); await P4.pg.click('nav [data-nav="report"]');
+  const popTxt = await P4.pg.locator('#pop').innerText();
+  ok('pop-up names the exact blockers (solution on 1 of 5, Guessing on Q4) with Retry now and Not now', popTxt.includes('opened solutions on 1 of 5 Stacks and Queues questions and chose Guessing on Q4') && await P4.pg.locator('#popRetry').isVisible() && await P4.pg.locator('#popNo').isVisible());
+  await P4.pg.click('#popRetry');
+  ok('Retry now starts a retry of only the blocked questions', await P4.pg.evaluate(() => S.phase === 'retry' && S.queue.length === 2));
+  const P5 = await capPage([mk('stackq', { shown: 0 })]); await P5.pg.click('nav [data-nav="report"]'); await P5.pg.keyboard.press('Escape');
+  await P5.pg.evaluate(() => go('home')); await P5.pg.evaluate(() => go('report'));
+  ok('a dismissed pop-up stays closed for the rest of the session', await P5.pg.locator('#pop').count() === 0);
   const firstLine = x =>x.split(String.fromCharCode(10))[0];
   console.log('WORDING one topic :', firstLine(t1));
   console.log('WORDING two topics:', firstLine(t2));
