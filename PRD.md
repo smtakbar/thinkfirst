@@ -1,6 +1,6 @@
 # Think First: product brief
 
-Status: live with a class since 17 Nov 2026. Early results below are read from the class sheet on 18 Nov 2026 (last row at 21:53, sheet time). **Each anonymous browser code is counted as one student. A student who clears the browser or switches phone would count twice, so counts can run slightly high. The pilot is still running. Anything not measured is marked [not measured].**
+Status: live with a class since 17 Nov 2026, built while taking a product management course (see the build log in section 11). Early results below are read from the class sheet on 18 Nov 2026 (last row at 21:53, sheet time). **Each anonymous browser code is counted as one student. A student who clears the browser or switches phone would count twice, so counts can run slightly high. The pilot is still running. Anything not measured is marked [not measured].**
 
 ## 1. Problem
 Students preparing for Data Structures exams can open a full solution (from a key, a friend or an AI assistant) before they have tried the question. They then recognise the answer without being able to produce it. Practice tools make this worse when the solution is one tap away.
@@ -93,6 +93,7 @@ Results are from the sheet on 18 Nov 2026. "Excluding two heaviest students" rem
 | My report | Latest try per question, updated on every repeat. First-try records are kept separately for the sheet and the aced rule. | Freezing the report at the first try, or a clear button | Students should see current standing, and the class data should stay clean. No clear button, so a repeat is the only way to change the report. |
 | Diagrams | Trees, graphs and linked lists are drawn from data. A question shows a diagram only when it does not do the work for the student. Other diagrams appear with the solution. | A diagram on every question | Drawing the tree is often the skill being tested, so showing it early would give the answer away. |
 | Question format | Multiple choice with traces | Typed code answers | Checkable in the browser and usable on a phone. Cost: guessing is possible, so quick guesses are flagged. |
+| Student feedback form | Five open questions, offered only to students who have attempted the quiz. A line on the home page tells every visitor about it and tells new visitors they can ignore it. Answers are anonymous, capped at 400 characters, and sent as one row each. | A form for every visitor, or collecting emails to follow up | Opinions from people who never tried the quiz would add noise. Students are asked not to write names, emails or roll numbers, so the rule of collecting no personal data holds. Cost: free text can still contain something personal, so it must be read before it is shared. |
 | Career message | Roles and short descriptions from the aced topics, no links, no job listings | Naming companies or live job postings, or predicting a career | Postings expire and add no evidence a student can act on. The mapping is a suggestion. |
 
 ## 8. Known limits
@@ -108,7 +109,7 @@ Results are from the sheet on 18 Nov 2026. "Excluding two heaviest students" rem
 1. Done: the link was shared with the class and students started on 17 Nov 2026.
 2. Get the class size from the instructor, so reach and completion have a real denominator.
 3. After one week, read the Analysis tab and record the metrics above again. Compare answers before and after 18 Nov (variants, progress line) using the row timestamps, and say so when the comparison is not clean.
-4. Read the feedback replies, then ask five students two questions: what annoyed you, and when did you want the solution sooner.
+4. Read the one-tap feedback replies and the five open answers in the sheet. Then ask five students two questions: what annoyed you, and when did you want the solution sooner.
 5. Decide from the data: keep, change or remove the three-attempt rule, and whether the progress line and career message changed how many students answer a first question.
 
 ## 10. Next, in priority order
@@ -117,3 +118,15 @@ Results are from the sheet on 18 Nov 2026. "Excluding two heaviest students" rem
 3. Topic-level difficulty ordering from a larger sample.
 4. Lab-style questions that ask for the bug in a short C program.
 5. Unit-wise questions from the instructor's quiz, with two hints and a worked solution each.
+
+## 11. Build log
+Think First is built while taking a product management course, and each update below applies a lesson as it arrives. One or two sentences per change, in order.
+
+| Date | What changed |
+|---|---|
+| 16 Nov 2026 | First version: practice questions where the student must commit an answer and a confidence before hints or solutions unlock, with every answer sent anonymously to a private class sheet. The minimal neomorphic look came the same day. |
+| 17 Nov 2026 | Teacher sign in, diagrams for trees, graphs and linked lists, and plain home wording. Topic start and finish rows plus one optional feedback question made drop-off measurable, and the class went live. |
+| 18 Nov 2026 | A small overall progress line aimed at the drop-off before the first answer, and sheet tables for completion and for the share of students who attempted each topic. Second chance now shows a different version of each missed question with Try again or Change topic, My report follows the latest try, and the results code and clear button were removed. |
+| 18 Nov 2026 | Career strength message and roadmap from the topics a student aces, built from a sourced skills-to-roles mapping with no job links. The PRD gained the first real pilot numbers and the author's decisions on the completion denominator and on counting each browser code as a student. |
+| 19 Nov 2026 | Sheet labels rewritten in plain words, and a bug fixed where a reworded question was counted as two. An offline fuzzy clustering run on 10 students showed the method works but the sample is too small to conclude anything. |
+| 23 Nov 2026 | Open feedback form with five questions for students who have attempted the quiz, plus a line on the home page that every visitor sees and new visitors can ignore. |

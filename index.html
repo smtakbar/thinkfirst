@@ -74,6 +74,14 @@ details.road{margin:20px 0;border-radius:20px;padding:6px 20px;box-shadow:var(--
 details.road summary{cursor:pointer;font-weight:650;padding:12px 0}
 details.road h3{font-size:1rem;margin:1em 0 .3em}
 details.road ul{margin:.3em 0;padding-left:1.15em}
+.notice{margin:22px 0 0;padding:16px 20px;border-radius:20px;box-shadow:var(--in-sm);font-size:.92rem;line-height:1.5;color:var(--muted)}
+.notice b{color:var(--ink)}
+.notice .row{margin-top:10px}
+textarea.fbq{width:100%;min-height:84px;margin-top:6px;font:inherit;color:var(--ink);background:none;border:0;border-radius:14px;padding:12px 14px;box-shadow:var(--in);resize:vertical}
+.fbfield{display:block;margin:16px 0}
+.fbfield span{font-weight:600;font-size:.95rem}
+.fbfield small{color:var(--muted);float:right}
+/* feedback */
 .qmeta{display:flex;justify-content:space-between;gap:12px;color:var(--muted);font-size:.85rem;font-weight:500}
 .qtext{font-size:1.14rem;line-height:1.45;letter-spacing:-.01em;margin:0 0 .8em}
 pre{background:none;box-shadow:var(--in);border-radius:16px;padding:14px 16px;overflow-x:auto;font:13.5px/1.55 var(--mono);margin:.4em 0 1.2em}
@@ -279,7 +287,7 @@ function login() {
 function go(view, arg) {
   if (view === "teacher" && !(isTeacher() || teacherMem)) view = "login";
   document.querySelectorAll("nav button").forEach(b => b.dataset.nav === view ? b.setAttribute("aria-current", "page") : b.removeAttribute("aria-current"));
-  ({ home, report, teacher, login, session: startSession })[view](arg);
+  ({ home, report, teacher, login, feedback: feedbackView, session: startSession })[view](arg);
   app.focus({ preventScroll: true }); window.scrollTo(0, 0);
 }
 document.querySelectorAll("nav button").forEach(b => b.addEventListener("click", () => go(b.dataset.nav)));
@@ -383,6 +391,44 @@ function roadmapHtml(aced) {
   </details>`;
 }
 
+/* ---------- student feedback (only for students who have attempted the quiz) ---------- */
+const FB_QUESTIONS = [
+  "What was the most confusing or frustrating part of using the site?",
+  "How did having to answer before seeing a hint change how you attempted the questions?",
+  "When you opened a hint or solution, what did you find helpful or missing?",
+  "Which question or topic felt unclear, too easy, or too hard, and why?",
+  "What more would you want to see on the site that would make you use it again?"
+];
+const hasAttempted = d => Object.keys(d.r).length > 0;
+function feedbackNotice(d) {
+  const line = "If you have attempted the quiz, we would value your feedback: five short questions. New visitors can ignore this.";
+  if (d.sv) return `<p class="notice" id="fbNotice"><b>Thank you for your feedback.</b> ${esc(line)}</p>`;
+  return `<div class="notice" id="fbNotice"><b>Feedback.</b> ${esc(line)}${hasAttempted(d) ? `<div class="row"><button class="btn ghost" id="fbOpen">Give feedback</button></div>` : ""}</div>`;
+}
+function feedbackView() {
+  const d = load();
+  if (!hasAttempted(d)) { app.innerHTML = `<h1>Feedback</h1><p class="lead">Feedback is for students who have attempted the quiz. Answer a question first, then come back.</p><div class="row"><button class="btn" id="fbBack">Start practising</button></div>`; $("#fbBack").addEventListener("click", () => go("home")); return; }
+  if (d.sv) { app.innerHTML = `<h1>Thank you</h1><p class="lead">Your feedback was sent without your name.</p><div class="row"><button class="btn" id="fbBack">Back to practice</button></div>`; $("#fbBack").addEventListener("click", () => go("home")); return; }
+  app.innerHTML = `
+    <h1>Your feedback</h1>
+    <p class="lead">Five short questions for students who have attempted the quiz. Answer any you like. Please do not write your name, email or roll number.</p>
+    <form id="fbf" novalidate>
+      ${FB_QUESTIONS.map((q, i) => `<label class="fbfield"><span>${i + 1}. ${esc(q)}</span><textarea class="fbq" maxlength="400" data-q="${i + 1}"></textarea></label>`).join("")}
+      <div class="row"><button class="btn" id="fbSend">Send feedback</button><button class="btn ghost" type="button" id="fbCancel">Not now</button><span id="fbMsg" class="muted" role="alert"></span></div>
+    </form>`;
+  $("#fbCancel").addEventListener("click", () => go("home"));
+  $("#fbf").addEventListener("submit", e => {
+    e.preventDefault();
+    const flat = x => x.split("|").join(" ").split(String.fromCharCode(10)).join(" ").split(String.fromCharCode(13)).join(" ").split(" ").filter(Boolean).join(" ").slice(0, 400);
+    const answers = [...app.querySelectorAll("textarea.fbq")].map(t => [t.dataset.q, flat(t.value)]).filter(a => a[1]);
+    if (!answers.length) { $("#fbMsg").textContent = "Write an answer to at least one question, or tap Not now."; return; }
+    const dd = load(); if (dd.sv) return go("home");
+    dd.sv = 1; save();
+    answers.forEach(([n, text]) => postRow([dd.id, "-", "q" + n, text, "survey", 0, 0, 0, 0, 0, 0, 0, 0]));
+    go("feedback");
+  });
+}
+
 /* ---------- home ---------- */
 function home() {
   const d = load();
@@ -402,10 +448,12 @@ function home() {
       <li>Wrong? Try again. Each try unlocks one hint.</li>
       <li>Missed questions? come back once at the end.</li>
     </ol>
+    ${feedbackNotice(d)}
     <h2>Pick a topic</h2>
     ${Object.keys(d.r).length ? overallHtml().replace('class="ov"', 'class="ov" style="margin:-4px 0 18px"') : ""}
     <div class="grid">${cards}</div>`;
   app.querySelectorAll("[data-topic]").forEach(b => b.addEventListener("click", () => go("session", b.dataset.topic)));
+  if ($("#fbOpen")) $("#fbOpen").addEventListener("click", () => go("feedback"));
 }
 
 /* ---------- session ---------- */
